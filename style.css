@@ -1,0 +1,52 @@
+﻿#header{
+	height:10%;
+	background-size:100% 100%;
+	/*background-color:#66ffff;*/
+}
+
+#content{
+	height:85%;
+	background-color:#ffffff;
+}
+
+#footer{
+	clear:both;
+	height:5%;
+	background-color:#000000;
+}
+
+#leftbar{
+	float:left;
+	width:15%;
+	height:100%;
+	background-color:#adccff;
+}
+
+#rightBar{
+	float:right;
+	width:15%;
+	height:100%;
+}
+
+#center{
+	float:left;
+	height:100%;
+	width:70%;
+	overflow:auto;
+}
+
+#text{
+	height:40%;
+	width:100%;
+	background-color:#eceff0;
+}
+#properties{
+	height:60%;
+	width:100%;
+	background-color:#3399ff;
+}
+.propertiesItem{
+	width:150px;
+	margin-left:5px;
+	margin-bottom:5px;
+}
