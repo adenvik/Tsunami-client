@@ -51,7 +51,7 @@
 	var toolbarLayer = new Konva.Layer();
 	toolbar.add(toolbarLayer);
 		
-	function initialize(){
+	/*function initialize(){
 		stageWidth =  document.getElementById('center').offsetWidth;
 		stageHeight = document.getElementById('center').offsetHeight;
 		stage = new Konva.Stage({
@@ -77,7 +77,7 @@
 		});
 		var toolbarLayer = new Konva.Layer();
 		toolbar.add(toolbarLayer);
-	}
+	}*/
 	
 /*
 	Область функций обработчиков на слоях
@@ -151,22 +151,16 @@
 		//Получаем группу, которой принадлежит данный объект
 		var target = shape.getParent();
 		//Убираем выделение с другого объекта, если оно было
-		//var curObj = selectedItemObj; work!
 		deselectCurrentItem();
 		//Устанавливаем выделение текущему
 		findElem(target).select(true);
-		//console.log(findElem(target));
-		//console.log(selectedItem);
-		//console.log(selectedItemObj);
-		console.log('------------------');
 		target.startDrag();
-		
-		//console.log(curObj == selectedItemObj); work!
 	});
 	stage.on('mouseup', function(evt){
 		//Находим пересечение на основном слое
-		var target = mainLayer.getIntersection(selectedItem.getAbsolutePosition(),'Group');
-		findPlace(selectedItemObj, target);
+		//var target = mainLayer.getIntersection(selectedItem.getAbsolutePosition(),'Group');
+		//findPlace(selectedItemObj, target);
+		findPlace_Absolute(selectedItemObj);
 		stage.draw();
 	});
 	stage.on('dragend', function(evt){
@@ -174,14 +168,65 @@
 	});
 	
 	/*
+		Функция для определения места позиционирования объекта
+			current - текущий объект, для которого ищется место
+			target(не обязательный) - объект, в точке "сброса"
+	*/
+	function findPlace_Absolute(current, target){
+		//Если target не передан - проверяем
+		if (target == undefined){
+			target = mainLayer.getIntersection(selectedItem.getAbsolutePosition(),'Group');
+		}
+		switch(target){
+			case undefined || null:
+				var e = findElemByPos(current.getAbsolutePosition(), current.name);
+				//Если такой элемент существует - сдвигаем
+				if (e != undefined){
+					findPlace_Absolute(current, e);
+					return;
+				}
+				current.parentObj = undefined;
+				current.group.position(current.getAbsolutePosition());
+				current.setLayer(dragLayer);
+				break;
+			
+			case current:
+				break;
+				
+			default:
+				//По группе находим элемент
+				target = findElem(target);
+				var y = target.getAbsolutePosition().y + target.getHeight();
+				if (current.getY() == y) break;
+				
+				if (target.type != '<div>'){
+					//Смещаем объект вниз
+					current.setY(y);
+					//И проверяем нет ли у нас чего ниже
+					findPlace_Absolute(current);
+				}else{
+					//Размещаем объект внутри родителя
+					current.setX(current.getAbsolutePosition().x - target.getAbsolutePosition().x);
+					current.setY(current.getAbsolutePosition().y - target.getAbsolutePosition().y);
+					current.parentObj = target;
+					current.group.moveTo(target.group);
+					target.updateSize();
+				}
+		}
+	}
+	
+	/*
 		Функция определения куда поместить объект
 			current - выбранный объект
 			target - объект, в который помещаем current
 	*/
-	function findPlace(current, target){
+	/*function findPlace(current, target){
+		console.log('find:');
+		console.log(current);
+		if (target != undefined) console.log(findElem(target));
+		else console.log(target);
 		//Если помещать некуда - помещаем в dragLayer
 		if (target == undefined){
-			//console.log('target.net');
 			current.parentObj = undefined;
 			current.group.position(current.getAbsolutePosition());
 			current.setLayer(dragLayer);
@@ -198,19 +243,19 @@
 			current.getAbsolutePosition().y >= target.getAbsolutePosition().y &&
 			current.getAbsolutePosition().y <= target.getAbsolutePosition().y + target.getHeight())
 		{
-				//console.log('right');
-				x = target.getAbsolutePosition().x + target.getWidth();
-				y = current.getAbsolutePosition().y;
-				flag = true;
+			console.log('right');
+			x = target.getAbsolutePosition().x + target.getWidth();
+			y = current.getAbsolutePosition().y;
+			flag = true;
 		}
 		//Проверяем не находится ли current снизу от target
 		if (current.getAbsolutePosition().y == target.getAbsolutePosition().y + target.getHeight() &&
 			current.getAbsolutePosition().x >= target.getAbsolutePosition().x &&
 			current.getAbsolutePosition().x <= target.getAbsolutePosition().x + target.getWidth())
 		{
+			console.log('bot');
 			//На всякий случай, если объект уже смещен - больше не трогаем,а то будет уходить в правый нижний угол
 			if(!flag){
-				//console.log('bot');
 				x = current.getAbsolutePosition().x;
 				y = target.getAbsolutePosition().y + target.getHeight();
 				flag = true;
@@ -219,15 +264,14 @@
 		if (!flag){
 			//Проверяем может ли объект содержать другие объекты
 			if (target.type == '<div>'){
-				//console.log('нашел div');
 				current.setX(current.getAbsolutePosition().x - target.getAbsolutePosition().x);
 				current.setY(current.getAbsolutePosition().y - target.getAbsolutePosition().y);
 				current.parentObj = target;
 				current.group.moveTo(target.group);
 				target.updateSize();
+				console.log('положил');
 				return;
 			}else{
-				//console.log('не смог в div');
 				//Тогда помещаем объект ниже target
 				x = current.getAbsolutePosition().x;
 				y = target.getAbsolutePosition().y + target.getHeight();
@@ -235,20 +279,24 @@
 		}
 		//Теперь проверяем нет ли родителя у target, т.к. если объект не был помещен внутрь target, то он лежит в target.parentObj
 		if (target.parentObj != undefined){
-			//console.log('parent est');
 			current.setX(x - target.parentObj.getAbsolutePosition().x);
 			current.setY(y - target.parentObj.getAbsolutePosition().y);
 			current.parentObj = target.parentObj;
 			current.group.moveTo(target.parentObj.group);
 			target.parentObj.updateSize();
 		}else{
-			//console.log('parent.net');
 			current.setX(x);
 			current.setY(y);
 			current.parentObj = undefined;
 			current.setLayer(dragLayer);
 		}
-	}
+		//Проверяем новую позицию
+		//target = mainLayer.getIntersection(current.getAbsolutePosition(),'Group');
+		//console.log('find targer:');
+		//console.log(target);
+		//console.log('---------');
+		//if(target != undefined) findPlace(current, target);
+	}*/
 
 /*
 	Область описания рабочих элементов
@@ -589,6 +637,22 @@
 	}
 	
 	/*
+		Функция поиска объекта в данных координатах, с именем, не равному name
+	*/
+	function findElemByPos(pos, name){
+		var elem;
+		for(var i = 0; i < elems.length; i++){
+			if (elems[i]!=undefined){
+				if(elems[i].getX() == pos.x && elems[i].getY() == pos.y && elems[i].name != name){
+					elem = elems[i];
+					break;
+				}
+			}
+		}
+		return elem;
+	}
+	
+	/*
 		Функция удаления объекта
 	*/
 	function deleteObject(){
@@ -655,7 +719,7 @@
 		delete object.groupTypeText;
 		//Добавляем вспомогательное свойство
 		object.parentObj = undefined;
-		console.log(object);
+		//console.log(object);
 		//Добавляем объекту rect, который будет отображать выделение объекта
 		object.selectionRect = new Konva.Rect({
 			x: 0,
