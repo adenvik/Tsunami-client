@@ -25,17 +25,19 @@
 				<div class="menuCheck">
                 <table>
                     <tr>
-                        <td><input type="checkbox">Использовать сетку</td>
-                        <td><input type="text" value="10" style="margin-left:10px; width:50px;" />&nbsp;px</td>
+                        <td><input type="checkbox" id="gridShowCB" checked>Отобразить сетку</td>
+                        <td><input type="number" id="gridSizeInp" value="10" style="margin-left:10px; width:50px;" />&nbsp;px</td>
                     </tr>
+					<tr id ="trgu">
+						<td colspan="2" align="center"><input type="checkbox" id="gridUseCB" checked>Выравнивание по сетке</td>
+					</tr>
                     <tr>
                         <td>Ширина документа</td>
                         <td><input type="text" value="1000" style="width:50px;margin-left:10px;" />&nbsp;px</td>
                     </tr>
-                    <tr>
-                        <td>Высота документа</td>
-                        <td><input type="text" value="700" style="width:50px;margin-left:10px;" />&nbsp;px</td>
-                    </tr>
+					<tr>
+						<td colspan="2" align="center"><input type="checkbox" id="borderShowCB" checked>Добавить объектам границу</td>
+					</tr>
                 </table>
 				</div>
 				

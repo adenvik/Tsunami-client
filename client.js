@@ -20,7 +20,10 @@
 		elemsCount={},
 		elems=[];
 		
-	var gridUse = true,
+	var 
+		trigger = false,
+		gridShow = true,
+		gridUse = true,
 		borderVisible = true;
 /*
 	Область инициализации переменных
@@ -86,27 +89,32 @@
 		Функция создания сетки
 	*/
 	function createCanvasCells() {
+		gridLayer.destroyChildren();
+		//console.log(stageHeight / gridSize + " " + parseInt(stageHeight / gridSize));
 		for (var i = 0; i < stageHeight / gridSize; i++) {
 			var line = new Konva.Line({
 				points: [0, i * gridSize, stageWidth, i * gridSize],
 				stroke: 'black',
-				strokeWidth: 0.2
+				strokeWidth: 0.1
 			});
 			gridLayer.add(line);
 		}
 		for (var i = 0; i < stageWidth / gridSize; i++) {
+			
 			var line = new Konva.Line({
 				points: [i * gridSize, 0, i * gridSize, stageHeight],
 				stroke: 'black',
-				strokeWidth: 0.2
+				strokeWidth: 0.1
 			});
 			gridLayer.add(line);
 		}
 		gridLayer.draw();
+		console.log(gridLayer.getChildren());
 	}
 
 	//Панель инструментов----------------------------------------------------------------------------------
 	toolbar.on('mousedown', function(evt) {
+		trigger = true;                          //Переменная, отвечающая за то, происходит ли манипуляции с объектом на toolbar-е
 		deselectCurrentItem();
 		//Получаем текущую фигуру
 		var shape = evt.target.getParent();
@@ -116,6 +124,7 @@
 		clone.group.startDrag();
 	});
 	toolbar.on('mouseup', function(evt) {
+		if(!trigger) return;				//Если мышь попала на панель toolbar, но при этом не было манипуляций с "болванками" - выходим
 		//Получаем выбранную фигуру
 		var shape = evt.target.getParent();
 		//Удаляем фигуру
@@ -125,6 +134,7 @@
 		selectedItem = undefined;
 		selectedItemObj = undefined;
 		toolbarLayer.draw();
+		trigger = false;
 	});
 	toolbar.on('dragend', function(evt){
 		//Если мышка вышла за пределы слоя, при этом объект остался на слое панели инструментов - удаляем его
@@ -136,6 +146,7 @@
 				toolbar.draw();
 			}
 		}
+		trigger = false;
 	});
 	//Основные рабочии слои--------------------------------------------------------------------------------
 	stage.on('mousedown', function(evt){
@@ -163,8 +174,11 @@
 		findPlace_Absolute(selectedItemObj);
 		stage.draw();
 	});
+	
 	stage.on('dragend', function(evt){
+		trigger = false;                   //Когда объект в области stage - сбрасываем триггер
 		propertiesDisplay();
+		checkCanvasHeight(selectedItemObj.getY()+selectedItemObj.getHeight());
 	});
 	
 	/*
@@ -379,11 +393,19 @@
 			width: toolbarWidth - 2 * (toolbarWidth / 6), 
 			height: height,
 			fill: this.color,
-			name: this.name+'rect',
+			name: this.name+'rect'
+		});
+		this.group.add(this.rect);
+		this.borderRect = new Konva.Rect({
+			x: 0,
+			y: 0,
+			width: toolbarWidth - 2 * (toolbarWidth / 6), 
+			height: height,
+			name: this.name+'BorderRect',
 			strokeWidth:0.5,
 			stroke: 'black'
 		});
-		this.group.add(this.rect);
+		this.group.add(this.borderRect);
 		this.groupTypeText = new Konva.Text({
 			x: 12,
 			y: -15,
@@ -404,6 +426,7 @@
 		}
 		this.setWidth = function(value){
 			this.rect.width(value);
+			this.borderRect.widht(value);
 			this.layer.draw();
 		}
 		this.getHeight = function(){
@@ -411,6 +434,7 @@
 		}
 		this.setHeight = function(value){
 			this.rect.height(value);
+			this.borderRect.height(value);
 			this.layer.draw();
 		}
 		this.getX = function(){
@@ -450,8 +474,8 @@
 			return this.group.getAbsolutePosition();
 		}
 		this.borderVisible = function(value){
-			if(value) this.rect.stroke('#000000');
-			else this.rect.stroke(undefined);
+			if(value) this.borderRect.stroke('#000000');
+			else this.borderRect.stroke(undefined);
 		}
 		this.setName = function(value){
 			if(value == undefined || value == "") return;
@@ -719,7 +743,6 @@
 		delete object.groupTypeText;
 		//Добавляем вспомогательное свойство
 		object.parentObj = undefined;
-		//console.log(object);
 		//Добавляем объекту rect, который будет отображать выделение объекта
 		object.selectionRect = new Konva.Rect({
 			x: 0,
@@ -775,6 +798,7 @@
 		//Обновляем методы
 		object.setWidth = function(value){
 			this.rect.width(value);
+			this.borderRect.width(value);
 			this.selectionRect.width(value);
 			//Обновляем положение якорей справа
 			this.group.get('.' + this.name + 'topRight')[0].setX(value - anchorSize);
@@ -785,6 +809,7 @@
 		object.setHeight = function(value){
 			this.rect.height(value);
 			this.selectionRect.height(value);
+			this.borderRect.height(value);
 			//Обновляем положение якорей снизу
 			this.group.get('.' + this.name + 'bottomRight')[0].setY(value - anchorSize);
 			this.group.get('.' + this.name + 'bottomLeft')[0].setY(value - anchorSize);
@@ -1061,7 +1086,6 @@
 				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','text','onChangeSizeText'),'Font');
 				object.addProperty('TextColor','getColorInnerText',createHtmlObject('input','color','onChangeColorText'),'Font');
 				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('input','text','onChangeStyleText'),'Font');
-				//object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('input','text','onChangeAlignText'),'Font');
 				object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('select',undefined,'onChangeAlignText',['left','center','right']),'Font');
 				break;
 			case '<input_text>':
@@ -1127,7 +1151,8 @@
 		object.getLayer().draw();
 		object.borderVisible(borderVisible);
 		object.showAnchors();
-		propertiesDisplay();
+		//propertiesDisplay();
+		object.select(true);
 	}	
 	
 	/*
@@ -1304,7 +1329,7 @@
         }
         elems = [];
 		//Создаем сетку
-		/*if(gridUse)*/ createCanvasCells();
+		/*if(gridShow)*/ createCanvasCells();
 		//И шаблоны элементов
 		new toolBarElement('<div>',"#d6d6d6");
 		new toolBarElement('<p>',"red", 40);
@@ -1363,22 +1388,40 @@
     }
 	
 	function onChangeX(){
-		var newX = window.event.srcElement.value;
+		var newX = parseInt(window.event.srcElement.value);
+		//console.log(newX);
+		if(isNaN(newX)){
+			console.log('nan');
+			window.event.srcElement.value = selectedItemObj.getX();
+			return;
+		}
 		selectedItemObj.setX(newX);
 	}
 	
 	function onChangeY(){
-		var newY = window.event.srcElement.value;
+		var newY = parseInt(window.event.srcElement.value);
+		if(isNaN(newY)){
+			window.event.srcElement.value = selectedItemObj.getY();
+			return;
+		}
 		selectedItemObj.setY(newY);
 	}
 	
 	function onChangeWidth(){
-		var newWidth = window.event.srcElement.value;
+		var newWidth = parseInt(window.event.srcElement.value);
+		if(isNaN(newWidth)){
+			window.event.srcElement.value = selectedItemObj.getWidth();
+			return;
+		}
 		selectedItemObj.setWidth(newWidth);
 	}
 	
 	function onChangeHeight(){
-		var newHeight = window.event.srcElement.value;
+		var newHeight = parseInt(window.event.srcElement.value);
+		if(isNaN(newHeight)){
+			window.event.srcElement.value = selectedItemObj.getHeight();
+			return;
+		}
 		selectedItemObj.setHeight(newHeight);
 	}
 	
@@ -1412,9 +1455,6 @@
 					$("input[name='CBBGColor']")[0].checked = false;
 				}
 			}
-			//selectedItemObj.setBGColor(newColor);
-			//$("input[name='INPBGColor']")[0].value = newColor;
-			//$("input[name='CBBGColor']")[0].checked = false;
 		}else{
 			selectedItemObj.setBGColor(undefined);
 			$("input[name='CBBGColor']")[0].checked = true;
@@ -1503,6 +1543,55 @@
 	$('#genHtml').on('click', function (e) {
 		alert("NO");
 	});
+	
+	$('#gridShowCB').on('change', function(e){
+		gridShow = e.currentTarget.checked;
+		if(gridShow){
+			$($('tr[id="trgu"]')[0]).show();
+			var oldValue = gridSize;
+			var value = $("#gridSizeInp")[0].value;
+			if(value <= 0) return;
+			gridSize = value;
+			if(oldValue == gridSize) gridLayer.show();
+			else{
+				createCanvasCells();
+				gridLayer.show();
+				stage.draw();
+			}
+		}else{
+			$($('tr[id="trgu"]')[0]).hide();
+			gridLayer.hide();
+		}
+	});
+	
+	$('#gridSizeInp').on('change', function(e){
+		if(gridShow){
+			var oldValue = gridSize;
+			var value = $("#gridSizeInp")[0].value;
+			console.log(value);
+			if(value <= 0) return;
+			gridSize = value;
+			if(oldValue == gridSize) gridLayer.show();
+			else{
+				createCanvasCells();
+				gridLayer.show();
+				stage.draw();
+			}
+		}
+	});
+	
+	$('#gridUseCB').on('change', function(e){
+		gridUse = e.currentTarget.checked;
+	});
+	
+	$('#borderShowCB').on('change', function(e){;
+		borderVisible = e.currentTarget.checked;
+		for(var i = 0; i < elems.length; i++){
+			elems[i].borderVisible(borderVisible);
+		}
+		stage.draw();
+	});
+	
 	/*
 		Функция перерисовки элементов при изменении размера окна
 	*/
@@ -1511,7 +1600,7 @@
 		var tempElems = elems;
 		elems = [];
 		toolbarElementsCount = 0;
-		initialize();
+		//initialize();
 		generateTemplate();
 		/*for(var i = toolbarElementsCount; i < tempElems.length; i++){
 			var elem = tempElems[i];
@@ -1528,8 +1617,15 @@
 			}
 		});*/
 	};
+	
+	function checkCanvasHeight(pos){
+		if (stageHeight - pos < gridSize + 10){
+			stageHeight+=100;
+			stage.height(stageHeight);
+			createCanvasCells();
+		}
+	}
 /*
 	Область кода, выполняемого при старте
 */
-	//initialize();
 	generateTemplate();
