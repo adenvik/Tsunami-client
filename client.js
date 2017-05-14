@@ -90,10 +90,9 @@
 	*/
 	function createCanvasCells() {
 		gridLayer.destroyChildren();
-		//console.log(stageHeight / gridSize + " " + parseInt(stageHeight / gridSize));
 		for (var i = 0; i < stageHeight / gridSize; i++) {
 			var line = new Konva.Line({
-				points: [0, i * gridSize, stageWidth, i * gridSize],
+				points: [0, parseInt(i * gridSize), stageWidth, parseInt(i * gridSize)],
 				stroke: 'black',
 				strokeWidth: 0.1
 			});
@@ -109,7 +108,6 @@
 			gridLayer.add(line);
 		}
 		gridLayer.draw();
-		console.log(gridLayer.getChildren());
 	}
 
 	//Панель инструментов----------------------------------------------------------------------------------
@@ -167,6 +165,11 @@
 		findElem(target).select(true);
 		target.startDrag();
 	});
+	
+	stage.on('dragmove', function(evt){
+		selectedItemObj.setAlign('none');
+	});
+	
 	stage.on('mouseup', function(evt){
 		//Находим пересечение на основном слое
 		//var target = mainLayer.getIntersection(selectedItem.getAbsolutePosition(),'Group');
@@ -187,12 +190,16 @@
 			target(не обязательный) - объект, в точке "сброса"
 	*/
 	function findPlace_Absolute(current, target){
+		
 		//Если target не передан - проверяем
 		if (target == undefined){
 			target = mainLayer.getIntersection(selectedItem.getAbsolutePosition(),'Group');
+			target = findElem(target);
 		}
+		
 		switch(target){
-			case undefined || null:
+			case null:	
+			case undefined:
 				var e = findElemByPos(current.getAbsolutePosition(), current.name);
 				//Если такой элемент существует - сдвигаем
 				if (e != undefined){
@@ -208,11 +215,8 @@
 				break;
 				
 			default:
-				//По группе находим элемент
-				target = findElem(target);
 				var y = target.getAbsolutePosition().y + target.getHeight();
 				if (current.getY() == y) break;
-				
 				if (target.type != '<div>'){
 					//Смещаем объект вниз
 					current.setY(y);
@@ -325,6 +329,7 @@
 		this.layer = toolbarLayer;
 		this.type = type;
 		this.color = color;
+		this.align = 'none';
 		if (height == undefined || height == null) height = 70;
 		//Даем объекту уникальное имя	
 		if (elemsCount[this.type] == undefined) {
@@ -342,7 +347,7 @@
 		}
 		//Создаем группу
 		this.group = new Konva.Group({
-			x: toolbarWidth / 6,
+			x: parseInt(toolbarWidth / 6),
 			y: posY,
 			name: this.name
 		});
@@ -383,14 +388,14 @@
 			}
 			//Изменяем координаты в объекте
 			return {
-				x:x,
-				y:y
+				x:parseInt(x),
+				y:parseInt(y)
 			}
 		});
 		this.rect = new Konva.Rect({
 			x: 0,
 			y: 0,
-			width: toolbarWidth - 2 * (toolbarWidth / 6), 
+			width: parseInt(toolbarWidth - 2 * (toolbarWidth / 6)), 
 			height: height,
 			fill: this.color,
 			name: this.name+'rect'
@@ -399,7 +404,7 @@
 		this.borderRect = new Konva.Rect({
 			x: 0,
 			y: 0,
-			width: toolbarWidth - 2 * (toolbarWidth / 6), 
+			width: parseInt(toolbarWidth - 2 * (toolbarWidth / 6)), 
 			height: height,
 			name: this.name+'BorderRect',
 			strokeWidth:0.5,
@@ -485,6 +490,28 @@
 		}
 		this.getName = function(value){
 			return this.name;
+		}
+		this.setAlign = function(value){
+			this.align = value;
+			var pObj = this.parentObj == undefined ? mainLayer : this.parentObj;
+			
+			switch(value){
+				case 'left':
+					this.setX(0);
+					break;
+				case 'center':
+					var parentCenter = parseInt(pObj.getWidth() / 2);
+					this.setX(parentCenter - parseInt(this.getWidth() / 2));
+					break;
+				case 'right':
+					this.setX(pObj.getWidth() - this.getWidth());
+					break;
+				default:
+			}
+			this.draw();
+		}
+		this.getAlign = function(){
+			return this.align;
 		}
 	}
 	
@@ -648,6 +675,8 @@
 		Функция поиска объекта, соответсвующего полученному графическому объекту
 	*/
 	function findElem(group){
+		if(group == undefined) return undefined;
+		
 		var elem;
 		for(var i = 0; i < elems.length; i++){
 			if (elems[i]!=undefined){
@@ -950,10 +979,11 @@
 			return htmlObj;
 		}*/
 		object.addProperty('Type','getType',createHtmlObject('input','text'));
-		object.addProperty('Left','getX',createHtmlObject('input','text','onChangeX'));
-		object.addProperty('Top','getY',createHtmlObject('input','text','onChangeY'));
-		object.addProperty('Width','getWidth',createHtmlObject('input','text','onChangeWidth'));
-		object.addProperty('Height','getHeight',createHtmlObject('input','text','onChangeHeight'));
+		object.addProperty('Left','getX',createHtmlObject('input','number','onChangeX'));
+		object.addProperty('Top','getY',createHtmlObject('input','number','onChangeY'));
+		object.addProperty('Align','getAlign',createHtmlObject('select',undefined,'onChangeAlign',['none','left','center','right']));
+		object.addProperty('Width','getWidth',createHtmlObject('input','number','onChangeWidth'));
+		object.addProperty('Height','getHeight',createHtmlObject('input','number','onChangeHeight'));
 		object.addProperty('BGColor','getBGColor',createHtmlObject('input','color','onChangeBGColor'));
 		
 		//Добавляем специфические элементы в зависимости от типа
@@ -1083,7 +1113,7 @@
 				object.addProperty('Font',undefined,htmlElement);
 				//-------------------------------------------
 				object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
-				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','text','onChangeSizeText'),'Font');
+				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
 				object.addProperty('TextColor','getColorInnerText',createHtmlObject('input','color','onChangeColorText'),'Font');
 				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('input','text','onChangeStyleText'),'Font');
 				object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('select',undefined,'onChangeAlignText',['left','center','right']),'Font');
@@ -1151,7 +1181,6 @@
 		object.getLayer().draw();
 		object.borderVisible(borderVisible);
 		object.showAnchors();
-		//propertiesDisplay();
 		object.select(true);
 	}	
 	
@@ -1244,6 +1273,7 @@
 					if(property.key=='Type') htmlElement.disabled = true;
 					break;
 				case 'SELECT':
+					htmlElement.value = getCurrentValue(object, property.funcName);
 					break;
 				case 'TEXTAREA':
 					htmlElement.setAttribute('style','width:90%; resize:vertical');
@@ -1287,6 +1317,7 @@
 		Функция, возвращающая текущее значение параметра по пришедшему имени функции для object
 	*/
 	function getCurrentValue(object, funcName){
+		//console.log(funcName);
 		switch(funcName){
 			case 'getType':
 				return object.type;
@@ -1294,6 +1325,8 @@
 				return object.getX();
 			case 'getY':
 				return object.getY();
+			case 'getAlign':
+				return object.getAlign();
 			case 'getWidth':
 				return object.getWidth();
 			case 'getHeight':
@@ -1471,6 +1504,11 @@
 		else selectedItemObj.setBGColor($("input[name='INPBGColor']")[0].value);
 	}
 	
+	function onChangeAlign(){
+		var newAlign = window.event.srcElement.value;
+		selectedItemObj.setAlign(newAlign);
+	}
+	
 /*
 	Обработка нажатия кнопок
 	Delete Ctrl+C Ctrl+V
@@ -1549,7 +1587,7 @@
 		if(gridShow){
 			$($('tr[id="trgu"]')[0]).show();
 			var oldValue = gridSize;
-			var value = $("#gridSizeInp")[0].value;
+			var value = parseInt($("#gridSizeInp")[0].value);
 			if(value <= 0) return;
 			gridSize = value;
 			if(oldValue == gridSize) gridLayer.show();
@@ -1567,8 +1605,7 @@
 	$('#gridSizeInp').on('change', function(e){
 		if(gridShow){
 			var oldValue = gridSize;
-			var value = $("#gridSizeInp")[0].value;
-			console.log(value);
+			var value = parseInt($("#gridSizeInp")[0].value);
 			if(value <= 0) return;
 			gridSize = value;
 			if(oldValue == gridSize) gridLayer.show();
