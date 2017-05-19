@@ -171,9 +171,6 @@
 	});
 	
 	stage.on('mouseup', function(evt){
-		//Находим пересечение на основном слое
-		//var target = mainLayer.getIntersection(selectedItem.getAbsolutePosition(),'Group');
-		//findPlace(selectedItemObj, target);
 		findPlace_Absolute(selectedItemObj);
 		stage.draw();
 	});
@@ -232,89 +229,6 @@
 				}
 		}
 	}
-	
-	/*
-		Функция определения куда поместить объект
-			current - выбранный объект
-			target - объект, в который помещаем current
-	*/
-	/*function findPlace(current, target){
-		console.log('find:');
-		console.log(current);
-		if (target != undefined) console.log(findElem(target));
-		else console.log(target);
-		//Если помещать некуда - помещаем в dragLayer
-		if (target == undefined){
-			current.parentObj = undefined;
-			current.group.position(current.getAbsolutePosition());
-			current.setLayer(dragLayer);
-			return;
-		}
-		target = findElem(target);
-		//Если словили сами себя - выходим
-		if (target == current) return;
-		var x,
-			y,
-			flag = false;
-		//Проверяем не находится ли current справа от target
-		if (current.getAbsolutePosition().x == target.getAbsolutePosition().x + target.getWidth() &&
-			current.getAbsolutePosition().y >= target.getAbsolutePosition().y &&
-			current.getAbsolutePosition().y <= target.getAbsolutePosition().y + target.getHeight())
-		{
-			console.log('right');
-			x = target.getAbsolutePosition().x + target.getWidth();
-			y = current.getAbsolutePosition().y;
-			flag = true;
-		}
-		//Проверяем не находится ли current снизу от target
-		if (current.getAbsolutePosition().y == target.getAbsolutePosition().y + target.getHeight() &&
-			current.getAbsolutePosition().x >= target.getAbsolutePosition().x &&
-			current.getAbsolutePosition().x <= target.getAbsolutePosition().x + target.getWidth())
-		{
-			console.log('bot');
-			//На всякий случай, если объект уже смещен - больше не трогаем,а то будет уходить в правый нижний угол
-			if(!flag){
-				x = current.getAbsolutePosition().x;
-				y = target.getAbsolutePosition().y + target.getHeight();
-				flag = true;
-			}
-		}
-		if (!flag){
-			//Проверяем может ли объект содержать другие объекты
-			if (target.type == '<div>'){
-				current.setX(current.getAbsolutePosition().x - target.getAbsolutePosition().x);
-				current.setY(current.getAbsolutePosition().y - target.getAbsolutePosition().y);
-				current.parentObj = target;
-				current.group.moveTo(target.group);
-				target.updateSize();
-				console.log('положил');
-				return;
-			}else{
-				//Тогда помещаем объект ниже target
-				x = current.getAbsolutePosition().x;
-				y = target.getAbsolutePosition().y + target.getHeight();
-			}
-		}
-		//Теперь проверяем нет ли родителя у target, т.к. если объект не был помещен внутрь target, то он лежит в target.parentObj
-		if (target.parentObj != undefined){
-			current.setX(x - target.parentObj.getAbsolutePosition().x);
-			current.setY(y - target.parentObj.getAbsolutePosition().y);
-			current.parentObj = target.parentObj;
-			current.group.moveTo(target.parentObj.group);
-			target.parentObj.updateSize();
-		}else{
-			current.setX(x);
-			current.setY(y);
-			current.parentObj = undefined;
-			current.setLayer(dragLayer);
-		}
-		//Проверяем новую позицию
-		//target = mainLayer.getIntersection(current.getAbsolutePosition(),'Group');
-		//console.log('find targer:');
-		//console.log(target);
-		//console.log('---------');
-		//if(target != undefined) findPlace(current, target);
-	}*/
 
 /*
 	Область описания рабочих элементов
@@ -885,7 +799,11 @@
 			this.group.get('.' + this.name + 'bottomRight')[0].setY(newHeight - anchorSize);
 			
 			this.group.get('.' + this.name + 'bottomLeft')[0].setY(newHeight - anchorSize);
-			if (this.parentObj != undefined) this.parentObj.updateSize();
+			if (this.parentObj != undefined){
+				console.log(this);
+				console.log(this.parentObj);
+				this.parentObj.updateSize();
+			}
 		}
 		object.setBGColor = function(value){
 			this.rect.fill(value);
@@ -1119,9 +1037,206 @@
 				object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('select',undefined,'onChangeAlignText',['left','center','right']),'Font');
 				break;
 			case '<input_text>':
+				object.rect.fill('#ffffff');
+				object.rect.stroke('black');
+				object.innerText = new Konva.Text({
+					x: anchorSize,
+					y: anchorSize,
+					text: 'Simple text',
+					name: object.name+'text',
+					width: object.getWidth(),
+					//height: object.getHeight(),
+					fontSize: 14,
+					fontFamily: 'Calibri',
+					fill: 'black'
+				});
+				object.group.add(object.innerText);	
+				object.setInnerText = function(value){
+					this.innerText.text(value);
+					this.draw();
+				}
+				object.setColorInnerText = function(value){
+					this.innerText.fill(value);
+					this.draw();
+				}
+				object.setSizeInnerText = function(value){
+					this.innerText.fontSize(value);
+					this.innerText.width(this.getWidth());
+					this.innerText.height(value);
+					this.draw();
+				}
+				object.setStyleInnerText = function(value){
+					if (value == 'normal' || value == 'bold' || value == 'italic'){
+						this.innerText.fontStyle(value);
+					} else this.innerText.fontStyle('normal');
+					this.draw();
+				}
+				object.setAlignInnerText = function(value){
+					if (value == 'left' || value == 'center' || value == 'right'){
+						this.innerText.align(value);
+					} else this.innerText.align('left');
+					this.draw();
+				}
+				object.getInnerText = function(){
+					return this.innerText.text();
+				}
+				object.getSizeInnerText = function(){
+					return this.innerText.fontSize();
+				}
+				object.getFontInnerText = function(){
+					return this.innerText.fontFamily();
+				}
+				object.getStyleInnerText = function(){
+					return this.innerText.fontStyle();
+				}
+				object.getAlignInnerText = function(){
+					return this.innerText.align();
+				}
+				object.updateSize = function(_super){
+					return function(){
+						this.innerText.width(this.getWidth() - anchorSize);
+						var y = this.getHeight() / 2 - this.innerText.getHeight() / 2;
+						y = y < anchorSize ? anchorSize : y;
+						this.innerText.y(y);
+						
+						return _super.apply(this,arguments);
+					}
+				}(object.updateSize);
+				object.updateSize();
+				object.addProperty('Text','getInnerText',createHtmlObject('input','text','onChangeText'));
+				//specific-----------------------------------
+				var htmlElement = createHtmlObject('input','text');
+				htmlElement.setAttribute('class','fontProperties')
+				object.addProperty('Font',undefined,htmlElement);
+				//-------------------------------------------
+				object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
+				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
+				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('select',undefined,'onChangeStyleText',['normal','italic','bold']),'Font');
+				object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('select',undefined,'onChangeAlignText',['left','center','right']),'Font');
 				break;
-			case '<button>':
+			case '<input_button>':
+				object.rect.fill('#e6e6e6');
+				object.rect.stroke('black');
+				object.rect.strokeWidth(0.5);
+				object.setWidth(50);
+				object.innerText = new Konva.Text({
+					x: anchorSize,
+					y: anchorSize,
+					text: 'Button',
+					name: object.name+'text',
+					//width: object.getWidth(),
+					//height: object.getHeight(),
+					fontSize: 14,
+					fontFamily: 'Calibri',
+					fill: 'black'
+				});
+				object.group.add(object.innerText);	
+				object.setInnerText = function(value){
+					this.innerText.text(value);
+					this.updateSize();
+					this.draw();
+				}
+				object.setColorInnerText = function(value){
+					this.innerText.fill(value);
+					this.draw();
+				}
+				object.setSizeInnerText = function(value){
+					this.innerText.fontSize(value);
+					this.updateSize();
+					this.draw();
+				}
+				object.setStyleInnerText = function(value){
+					if (value == 'normal' || value == 'bold' || value == 'italic'){
+						this.innerText.fontStyle(value);
+					} else this.innerText.fontStyle('normal');
+					this.draw();
+				}
+				object.getInnerText = function(){
+					return this.innerText.text();
+				}
+				object.getSizeInnerText = function(){
+					return this.innerText.fontSize();
+				}
+				object.getFontInnerText = function(){
+					return this.innerText.fontFamily();
+				}
+				object.getStyleInnerText = function(){
+					return this.innerText.fontStyle();
+				}
+				object.updateSize = function(_super){
+					return function(){
+						if(this.innerText.getWidth() > this.getWidth()){
+							this.setWidth(this.innerText.getWidth() + anchorSize * 2);
+						}
+						if(this.innerText.getHeight() > this.getHeight()){
+							this.setHeight(this.innerText.getHeight() + anchorSize * 2);
+						}
+						
+						var x = this.getWidth() / 2 - this.innerText.width() / 2;
+						this.innerText.x(x);
+						
+						var y = this.getHeight() / 2 - this.innerText.fontSize() / 2;
+						y = y < anchorSize ? anchorSize : y;
+						this.innerText.y(y);
+						
+						return _super.apply(this,arguments);
+					}
+				}(object.updateSize);
+				object.updateSize();
+				object.addProperty('Text','getInnerText',createHtmlObject('input','text','onChangeText'));
+				//specific-----------------------------------
+				var htmlElement = createHtmlObject('input','text');
+				htmlElement.setAttribute('class','fontProperties')
+				object.addProperty('Font',undefined,htmlElement);
+				//-------------------------------------------
+				object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
+				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
+				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('select',undefined,'onChangeStyleText',['normal','italic','bold']),'Font');
 				break;
+			case '<input_radio>':
+				object.setWidth(object.getHeight());
+				object.circle = new Konva.Circle({
+					name:this.name + 'Circle',
+					x:parseInt(object.getHeight() / 2),
+					y:parseInt(object.getHeight() / 2),
+					radius:parseInt(object.getHeight() / 2),
+					fill:'#e6e6e6',
+					stroke:'#000000',
+					strokeWidth:0.5
+				});
+				object.checkCircle = new Konva.Circle({
+					name:this.name + 'CheckCircle',
+					x:parseInt(object.getHeight() / 2),
+					y:parseInt(object.getHeight() / 2),
+					radius:parseInt(object.getHeight() / 3),
+					fill:undefined //'#000000'
+				});
+				object.group.add(object.circle);
+				object.group.add(object.checkCircle);
+				object.setChecked = function(value){
+					if(value) this.checkCircle.fill('#000000');
+					else this.checkCircle.fill(undefined);
+					this.draw();
+				}
+				object.isChecked = function(){
+					return this.checkCircle.fill() != undefined ? true : false;
+				}
+				object.updateSize = function(_super){
+					return function(){
+						if(this.getHeight() > this.getWidth()) this.setHeight(this.getWidth());
+						if(this.getWidth() > this.getHeight()) this.setWidth(this.getHeight());
+						this.circle.x(parseInt(object.getHeight() / 2));
+						this.circle.y(parseInt(object.getHeight() / 2));
+						this.circle.radius(parseInt(object.getHeight() / 2));
+						
+						this.checkCircle.x(parseInt(object.getHeight() / 2));
+						this.checkCircle.y(parseInt(object.getHeight() / 2));
+						this.checkCircle.radius(parseInt(object.getHeight() / 3));
+						return _super.apply(this,arguments);
+					}
+				}(object.updateSize);
+				object.addProperty('Checked','isChecked',createHtmlObject('select',undefined,'onChangeChecked',['true','false']));
+				break;	
 			case '<image>':
 				//Удаляем не нужные параметры
 				delete object.setBGColor;
@@ -1347,6 +1462,8 @@
 				return object.getStyleInnerText();
 			case 'getAlignInnerText':
 				return object.getAlignInnerText();
+			case 'isChecked':
+				return object.isChecked();
 			default:
 				return undefined;
 		}
@@ -1362,11 +1479,15 @@
         }
         elems = [];
 		//Создаем сетку
-		/*if(gridShow)*/ createCanvasCells();
+		if(gridShow) createCanvasCells();
 		//И шаблоны элементов
 		new toolBarElement('<div>',"#d6d6d6");
 		new toolBarElement('<p>',"red", 40);
 		new toolBarElement('<image>','#000000');
+		
+		new toolBarElement('<input_text>','#ffffff',20);
+		new toolBarElement('<input_button>','#e6e6e6',20);
+		new toolBarElement('<input_radio>','#000000',20);
 		
 	}
 	
@@ -1509,21 +1630,36 @@
 		selectedItemObj.setAlign(newAlign);
 	}
 	
+	function onChangeChecked(){
+		var checked = window.event.srcElement.value;
+		selectedItemObj.setChecked(checked);
+	}
+	
 /*
 	Обработка нажатия кнопок
 	Delete Ctrl+C Ctrl+V
 */
+	var currentPos = new Object(), onLayer = false;
 	$(document).ready(function() {
 		var delKeyCode = 46,
 			ctrlDown = false,
 			ctrlKeyCode = 17,
 			vKeyCode = 86,
 			cKeyCode = 67;
+		$('#center').mousemove(function(e){
+			onLayer = true;
+			currentPos.x = e.clientX - $('#leftBar').width(); 
+			currentPos.y = e.clientY - $('#header').height();
+			//console.log(currentPos);
+		});
+		$('#center').mouseout(function(e){
+			onLayer = false;
+		});
 		$(document).keydown(function(e){
 			if (e.keyCode == delKeyCode) deleteObject();
 			else if(e.keyCode == ctrlKeyCode) ctrlDown = true;
-			else if(ctrlDown && e.keyCode == cKeyCode) onCopyObj();
-			else if(ctrlDown && e.keyCode == vKeyCode) onPasteObj();
+			else if(ctrlDown && e.keyCode == cKeyCode && onLayer) onCopyObj();
+			else if(ctrlDown && e.keyCode == vKeyCode && onLayer) onPasteObj();
 		}).keyup(function(e){
 			if(e.keyCode == ctrlKeyCode) ctrlDown = false;
 		});
@@ -1536,44 +1672,78 @@
 		if(selectedItem == undefined) return;
 		//Копируем объект со всеми свойствами
 		copyObject = Object.assign({},selectedItemObj);
-		//console.log(copyObject);
 	}
 	
 	/*
 		Функция создания копии объекта на рабочей области
-			!!!!!!!!!!необходимо дополнить размещением!!!!!!!!
 	*/
 	function onPasteObj(){
+		if(copyObject == undefined) return;
 		//Убираем выделение
 		deselectCurrentItem();
 		//Создаем новую копию
-		var obj = Object.assign({},copyObject);
-		//Копируем группу
-		obj.group=copyObject.group.clone();
+		var obj = objectClone(copyObject);
+		//Выделяем для работы
+		obj.select(true);
+		//Кладем группу в координатах курсора
+		obj.setX(currentPos.x);
+		obj.setY(currentPos.y);
+		//Запускаем функцию размещения объекта
+		findPlace_Absolute(obj);
+		stage.draw();
+	}
+	
+	/*
+		Функция клонирования рабочего объекта
+	*/
+	function objectClone(obj){
+		if(obj == undefined) return;
 		
-		//Проверяем, нет ли внутри группы, других групп - объектов
-		//Если есть - необходимо их "скопировать" согласно алгоритму
-		
+		var clone = Object.assign({},obj);
+		elemsCount[clone.type]++;
+		var name = clone.type + elemsCount[clone.type];
+		clone.group = groupClone(obj.group, clone);
 		//Копируем все объекты Konva из группы чтобы сбросить ссылки с исходного объекта
-		for(p in copyObject){
+		for(p in obj){
 			try{
-				if(copyObject[p].getType()!='Layer' && copyObject[p].getType()!='Group'){
-					var t = obj.group.get('.' + copyObject[p].name())[0];
-					obj[p] = t;
+				if(obj[p].getType()!='Layer' && obj[p].getType()!='Group'){
+					var t = clone.group.get('.' + obj[p].name())[0];
+					clone[p] = t;
 				}
 			}catch(err){}
 		}
-		//console.log(obj);
-		elemsCount[obj.type]++;
-		var name = obj.type + elemsCount[obj.type];
 		//Даем уникальное имя и помещаем в массив объектов
-		obj.setName(name);
-		elems.push(obj);
-		//Выделяем для работы
-		obj.select(true);
-		//ВОТ СЮДА ВСТАВИТЬ РАЗМЕЩЕНИЕ, а пока что так
-		obj.setX(0);
-		obj.setY(0);
+		clone.setName(name);
+		elems.push(clone);
+		
+		return clone;
+	}
+	
+	/*
+		Функция клонирования группы рабочего объекта (рекурсивная с вышестоящей функцией)
+			group - группа, которая клонируется
+			obj - объект, содержащий данную группу (для рекурсивного алгоритма - указание родителя)
+	*/
+	function groupClone(group, obj){
+		if (group == undefined) return;
+		
+		var clone = new Konva.Group({
+			x: group.x(),
+			y: group.y(),
+			name: group.name()
+		});
+		clone.dragBoundFunc(group.dragBoundFunc());
+		group.getChildren().forEach(function(item){
+			if(item.getType() != 'Group'){
+				clone.add(item.clone());
+			}else{
+				var insertedElem = findElem(item);
+				var newElem = objectClone(insertedElem);
+				newElem.parentObj = obj;
+				clone.add(newElem.group);
+			}
+		});
+		return clone;
 	}
 /*
 	Область функций обработки окна
