@@ -20,10 +20,10 @@
 		elemsCount={},
 		elems=[];
 		
-	var 
-		trigger = false,
+	var trigger = false,
+		stretch = false,
 		gridShow = true,
-		gridUse = true,
+		gridUse = false,
 		borderVisible = true;
 /*
 	Область инициализации переменных
@@ -54,34 +54,6 @@
 	var toolbarLayer = new Konva.Layer();
 	toolbar.add(toolbarLayer);
 		
-	/*function initialize(){
-		stageWidth =  document.getElementById('center').offsetWidth;
-		stageHeight = document.getElementById('center').offsetHeight;
-		stage = new Konva.Stage({
-			container: 'konva',
-			width: stageWidth,
-			height: stageHeight
-		});
-		gridLayer = new Konva.Layer();
-		gridLayer.disableHitGraph();
-		mainLayer = new Konva.Layer();
-		dragLayer = new Konva.Layer();
-		stage.add(gridLayer);
-		stage.add(mainLayer);
-		stage.add(dragLayer);
-		//Инициализация панели инструментов
-		toolbarWidth = document.getElementById('leftBar').offsetWidth;
-		toolbarHeight = document.getElementById('leftBar').offsetHeight;
-		var toolbar = new Konva.Stage({
-			container: 'leftBar',
-			width: toolbarWidth,
-			height: toolbarHeight,
-			name: 'toolbar'
-		});
-		var toolbarLayer = new Konva.Layer();
-		toolbar.add(toolbarLayer);
-	}*/
-	
 /*
 	Область функций обработчиков на слоях
 */
@@ -173,6 +145,8 @@
 	stage.on('mouseup', function(evt){
 		findPlace_Absolute(selectedItemObj);
 		stage.draw();
+		
+		console.log(createJSON(selectedItemObj));
 	});
 	
 	stage.on('dragend', function(evt){
@@ -279,7 +253,7 @@
 				//Если объект в области панели инструментов
 				position = toolbar.getPointerPosition();
 				//Если группа переносится на рабочий слой - переопределяем ее содержимое в соответсвии с ее типом
-				if(position.x > this.getStage().width()){
+				if(position.x > toolbar.width()){
 					moveToMainLayer(this);
 				}
 				else{
@@ -312,7 +286,9 @@
 			width: parseInt(toolbarWidth - 2 * (toolbarWidth / 6)), 
 			height: height,
 			fill: this.color,
-			name: this.name+'rect'
+			name: this.name+'rect',
+			strokeWidth: 0,
+			opacity: 1
 		});
 		this.group.add(this.rect);
 		this.borderRect = new Konva.Rect({
@@ -332,7 +308,7 @@
 			name: this.name+'type',
 			fontSize: 14,
 			fontFamily: 'Calibri',
-			fill: '#000000',
+			fill: '#000000'
 		});
 		this.group.add(this.groupTypeText);	
 		toolbarLayer.add(this.group);
@@ -345,7 +321,7 @@
 		}
 		this.setWidth = function(value){
 			this.rect.width(value);
-			this.borderRect.widht(value);
+			this.borderRect.width(value);
 			this.layer.draw();
 		}
 		this.getHeight = function(){
@@ -360,6 +336,8 @@
 			return this.group.getX();
 		}
 		this.setX = function(value){
+			//if(gridUse) value = value - value % gridSize;
+			
 			this.group.setX(value);
 			this.layer.draw();
 		}
@@ -367,6 +345,8 @@
 			return this.group.getY();
 		}
 		this.setY = function(value){
+			//if(gridUse) value = value - value % gridSize;
+			
 			this.group.setY(value);
 			this.layer.draw();
 		}
@@ -427,6 +407,24 @@
 		this.getAlign = function(){
 			return this.align;
 		}
+		
+		this.setBorderWidth = function(value){
+			this.rect.strokeWidth(value);
+		}
+		
+		this.setBorderColor = function(value){
+			this.rect.stroke(value);
+		}
+		
+		this.getBorderWidth = function(){
+			var retValue = this.rect.strokeWidth();
+			return retValue == 0 ? undefined : retValue;
+		}
+		
+		this.getBorderColor = function(){
+			return this.rect.stroke();
+		}
+		
 	}
 	
 	/*
@@ -579,6 +577,7 @@
 		clone.setY(object.getY());
 		//Добавляем ему возможность перемещения
 		clone.group.draggable(true);
+		clone.group.startDrag();
 		//Помечаем текущий элемент
 		selectedItem = clone.group;
 		selectedItemObj = clone;
@@ -740,6 +739,8 @@
 		}
 		//Обновляем методы
 		object.setWidth = function(value){
+			//if(gridUse) value = value - value % gridSize;
+				
 			this.rect.width(value);
 			this.borderRect.width(value);
 			this.selectionRect.width(value);
@@ -750,6 +751,8 @@
 			this.draw();
 		}
 		object.setHeight = function(value){
+			//if(gridUse) value = value - value % gridSize;
+			
 			this.rect.height(value);
 			this.selectionRect.height(value);
 			this.borderRect.height(value);
@@ -902,8 +905,9 @@
 		object.addProperty('Align','getAlign',createHtmlObject('select',undefined,'onChangeAlign',['none','left','center','right']));
 		object.addProperty('Width','getWidth',createHtmlObject('input','number','onChangeWidth'));
 		object.addProperty('Height','getHeight',createHtmlObject('input','number','onChangeHeight'));
+		object.addProperty('BorderWidth','getBorderWidth',createHtmlObject('input','number','onChangeBorderWidth'));
+		object.addProperty('BorderColor','getBorderColor',createHtmlObject('input','color','onChangeBorderColor'));
 		object.addProperty('BGColor','getBGColor',createHtmlObject('input','color','onChangeBGColor'));
-		
 		//Добавляем специфические элементы в зависимости от типа
 		switch(object.type){
 			case '<div>':
@@ -953,6 +957,7 @@
 					}
 				}(object.updateSize);
 				object.addProperty('BGImage','getImage()',createHtmlObject('input','text','onChangeImage'));
+				
 				break;
 			case '<p>':
 				object.innerText = new Konva.Text({
@@ -1299,6 +1304,7 @@
 		object.select(true);
 	}	
 	
+	
 	/*
 		Функция динамического создания таблицы со свойствами под выбранный элемент
 	*/
@@ -1413,6 +1419,7 @@
 				checkbox.setAttribute('type', 'checkbox');
 				checkbox.setAttribute('onchange', 'isUseBGColor()');
 				checkbox.setAttribute('name','CBBGColor');
+				checkbox.setAttribute('style','width:11%');
 				if (selectedItemObj.getBGColor() == undefined) checkbox.checked = true;
 				td1.appendChild(checkbox);
 				td1.appendChild(document.createTextNode('Без цвета'));
@@ -1462,6 +1469,10 @@
 				return object.getStyleInnerText();
 			case 'getAlignInnerText':
 				return object.getAlignInnerText();
+			case 'getBorderWidth':
+				return object.getBorderWidth();
+			case 'getBorderColor':
+				return object.getBorderColor();
 			case 'isChecked':
 				return object.isChecked();
 			default:
@@ -1474,10 +1485,10 @@
 	*/
 	function generateTemplate(){
 		//Уничтожаем все имеющиеся объекты
-		for(var i = 0; i < elems.length; i++){
+		/*for(var i = 0; i < elems.length; i++){
             elems[i].group.destroy();
         }
-        elems = [];
+        elems = [];*/
 		//Создаем сетку
 		if(gridShow) createCanvasCells();
 		//И шаблоны элементов
@@ -1541,10 +1552,23 @@
         selectedItemObj.setInnerText(newText);
     }
 	
+	function onChangeBorderWidth(){
+		var newWidth = parseInt(window.event.srcElement.value);
+		if (newWidth < 0 && isNaN(newWidth)){
+			window.event.srcElement.value = selectedItemObj.getBorderWidth();
+			return;
+		}
+		selectedItemObj.setBorderWidth(newWidth);
+	}
+	
+	function onChangeBorderColor(){
+		var newColor = window.event.srcElement.value;
+		selectedItemObj.setBorderColor(newColor);
+	}
+	
 	function onChangeX(){
 		var newX = parseInt(window.event.srcElement.value);
-		//console.log(newX);
-		if(isNaN(newX)){
+		if(newX < 0 || isNaN(newX)){
 			console.log('nan');
 			window.event.srcElement.value = selectedItemObj.getX();
 			return;
@@ -1554,7 +1578,7 @@
 	
 	function onChangeY(){
 		var newY = parseInt(window.event.srcElement.value);
-		if(isNaN(newY)){
+		if(newY < 0 || isNaN(newY)){
 			window.event.srcElement.value = selectedItemObj.getY();
 			return;
 		}
@@ -1563,7 +1587,7 @@
 	
 	function onChangeWidth(){
 		var newWidth = parseInt(window.event.srcElement.value);
-		if(isNaN(newWidth)){
+		if(newWidth < 3 * anchorSize || isNaN(newWidth)){
 			window.event.srcElement.value = selectedItemObj.getWidth();
 			return;
 		}
@@ -1572,7 +1596,7 @@
 	
 	function onChangeHeight(){
 		var newHeight = parseInt(window.event.srcElement.value);
-		if(isNaN(newHeight)){
+		if(newHeight < 3 * anchorSize || isNaN(newHeight)){
 			window.event.srcElement.value = selectedItemObj.getHeight();
 			return;
 		}
@@ -1803,28 +1827,39 @@
 		Функция перерисовки элементов при изменении размера окна
 	*/
 	window.onresize = function(event) {
-		//console.log('resize');
-		var tempElems = elems;
-		elems = [];
-		toolbarElementsCount = 0;
-		//initialize();
-		generateTemplate();
-		/*for(var i = toolbarElementsCount; i < tempElems.length; i++){
-			var elem = tempElems[i];
-			//масштабируем его как-то
-			//Добавляем в наш массив
-			elems.push(elem);
-			//Отрисовываем
-			stage.draw();
-		}*/
-		location.reload();
-		/*$.ajax({
-			success: function() {   
-				location.reload();  
+		var oldStageWidth = stageWidth,
+			oldStageHeight = stageHeight;
+		//Получаем новые размеры и применяем их
+		stageWidth =  document.getElementById('center').offsetWidth;
+		stageHeight = document.getElementById('center').offsetHeight;
+		stage.width(stageWidth);
+		stage.height(stageHeight);
+		
+		toolbarWidth = document.getElementById('leftBar').offsetWidth;
+		toolbarHeight = document.getElementById('leftBar').offsetHeight;
+		toolbar.width(toolbarWidth);
+		toolbar.height(toolbarHeight);
+		//Отрисовываем новую сетку
+		createCanvasCells();
+		//Меняем размер у элементов toolbar
+		for(var i = 0; i < toolbarElementsCount; i++){
+			elems[i].setX(parseInt(toolbarWidth / 6));
+			elems[i].setWidth(parseInt(toolbarWidth - 2 * (toolbarWidth / 6)));
+		}
+		//Если есть элементы в рабочей области
+		if(elems.length > toolbarElementsCount){
+			var koef = stageWidth / oldStageWidth;
+			//Меняем размер у элементов в рабочей области
+			for(var i = toolbarElementsCount; i < elems.length; i++){
+				elems[i].setX(parseInt(elems[i].getX() * koef));
+				elems[i].setWidth(parseInt(elems[i].getWidth() * koef));
 			}
-		});*/
+		}
 	};
 	
+	/*
+		Функция увеличения высоты документа
+	*/
 	function checkCanvasHeight(pos){
 		if (stageHeight - pos < gridSize + 10){
 			stageHeight+=100;
@@ -1832,6 +1867,132 @@
 			createCanvasCells();
 		}
 	}
+	
+/*
+	Функции для общения с сервером
+*/	
+	/*
+		Функция запаковывания JSON-представления HTML-страницы
+	*/
+	function createJSONArray(){
+		var jsonArray = [];
+		//Получаем объекты на рабочем слое, кроме тех, которые уже лежат в других объектах
+		var objects = mainLayer.getChildren();
+		//И добавляем его представление в JSON в наш массив
+		for (var i = 0; i < objects.length; i++){
+			jsonArray.push(createJSON(findElem(objects[i])));
+		}
+		return jsonArray;
+	}
+	
+	
+	/*
+		Функция запаковывания JSON-представления HTML-объекта
+	*/
+	function createJSON(object){
+		var obj = new Object();
+		//Массив атрибутов объекта
+		var attr = [];
+		//Получаем имя объекта и его тип, если он есть
+		var nameObj = String(object.type).substring(1,String(object.type).length - 1).split('_');
+		obj.name = nameObj[0];
+		if(nameObj.length > 1){
+			var tempObj = new Object();
+			tempObj.key = 'type';
+			tempObj.value = nameObj[1];
+			attr.push(tempObj);
+		}
+		//Собираем значения свойств объекта
+		for(var i = 1; i < object.properties.length; i++){
+			attr = attr.concat(pObj(object,object.properties[i]));
+		}
+		obj.attributes = Array.from(attr);
+		//Находим все вложенные объекты
+		var children = object.group.getChildren(function(node){
+			return node.getType() == 'Group';
+		});
+		var tags = [];
+		if (children != undefined){
+			for (var i = 0; i < children.length; i++){
+				tags.push(createJSON(findElem(children[i])));
+			}
+		}
+		obj.tags = tags;
+		
+		return obj;
+	}
+	
+	
+	function pObj(object,property){
+		if (property.childProperties.length > 0){
+			var arr = [];
+			for(var i = 0; i < property.childProperties.length; i++){
+				arr = arr.concat(pObj(object, property.childProperties[i]));
+			}
+			return arr;
+		}else{
+			var obj = new Object();
+			switch(property.key){
+				/*
+				case 'Left':
+					tempObj.key = 'left';
+					break;
+				case 'Top':
+					tempObj.key = 'top';
+					break;
+				case 'Align':
+					tempObj.key = 'align';
+					break;
+				case 'Width':
+					tempObj.key = 'width';
+					break;
+				case 'Height':
+					break;
+				case 'Checked':
+					break;
+				case 'SRC':
+					break;
+				*/
+				case 'Text':
+					if(object.type == '<input_text>') obj.key = 'value';
+					else obj.key = 'text';
+					break;
+				case 'BGColor':
+					obj.key = 'background-color';
+					break;
+				case 'BGImage':
+					obj.key = 'background-image';
+					break;
+				case 'TextFont':
+					obj.key = 'font-family';
+					break;
+				case 'TextSize':
+					obj.key = 'font-size';
+					break;
+				case 'TextColor':
+					obj.key = 'color';
+					break;
+				case 'TextStyle':
+					obj.key = 'font-style';
+					break;
+				case 'TextAlign':
+					obj.key = 'text-align';
+					break;
+				case 'BorderWidth':
+					obj.key = 'border-width';
+					break;
+				case 'BorderColor':
+					obj.key = 'border-color';
+					break;
+				default:
+					obj.key = property.key.toLowerCase();
+			}
+			obj.value = getCurrentValue(object,property.funcName);
+			if (obj.value == undefined) return [];
+			else return obj;
+		}
+	}
+	
 /*
 	Область кода, выполняемого при старте
 */
