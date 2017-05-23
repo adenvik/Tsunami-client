@@ -3,6 +3,7 @@
 */
 	var selectedItem,
 		selectedItemObj,
+		bodySize = 1000,
 		stage,
 		stageWidth,
 		stageHeight,
@@ -21,7 +22,7 @@
 		elems=[];
 		
 	var trigger = false,
-		stretch = false,
+		stretch = false, 
 		gridShow = true,
 		gridUse = false,
 		borderVisible = true;
@@ -61,10 +62,14 @@
 		Функция создания сетки
 	*/
 	function createCanvasCells() {
+		gridSize = coordToBodySize(gridSize);//coordToRealValue(gridSize);
+		console.log(gridSize);
+		console.log(coordToRealValue(gridSize));
 		gridLayer.destroyChildren();
+		var count = 0;
 		for (var i = 0; i < stageHeight / gridSize; i++) {
 			var line = new Konva.Line({
-				points: [0, parseInt(i * gridSize), stageWidth, parseInt(i * gridSize)],
+				points: [0, i * gridSize, stageWidth, i * gridSize],
 				stroke: 'black',
 				strokeWidth: 0.1
 			});
@@ -78,7 +83,9 @@
 				strokeWidth: 0.1
 			});
 			gridLayer.add(line);
+			count++;
 		}
+		console.log(count);
 		gridLayer.draw();
 	}
 
@@ -145,8 +152,6 @@
 	stage.on('mouseup', function(evt){
 		findPlace_Absolute(selectedItemObj);
 		stage.draw();
-		
-		console.log(createJSON(selectedItemObj));
 	});
 	
 	stage.on('dragend', function(evt){
@@ -874,37 +879,13 @@
 		/*
 			Добавляем общие параметры
 		*/
-		function createHtmlObject(name, type, func, values){
-			var htmlObj = document.createElement(name);
-			if (type != undefined) htmlObj.setAttribute('type',type);
-			if (func != undefined) htmlObj.setAttribute('onchange',func+'()');
-			if (values != undefined){
-				switch(name){
-					case 'select':
-						values.forEach(function(value) {
-							var option = document.createElement('option');
-							option.value=value;
-							option.text=value;
-							htmlObj.appendChild(option);
-						});
-						break;
-					default:
-						console.log('Не определился тип htmlObject createHtmlObject');
-				}
-			}
-			return htmlObj;
-		}
-		/*function createHtmlObject(name,type,func){
-			var htmlObj = new Object();
-			htmlObj.name = name; htmlObj.type = type; htmlObj.func = func;
-			return htmlObj;
-		}*/
+		
 		object.addProperty('Type','getType',createHtmlObject('input','text'));
 		object.addProperty('Left','getX',createHtmlObject('input','number','onChangeX'));
 		object.addProperty('Top','getY',createHtmlObject('input','number','onChangeY'));
-		object.addProperty('Align','getAlign',createHtmlObject('select',undefined,'onChangeAlign',['none','left','center','right']));
 		object.addProperty('Width','getWidth',createHtmlObject('input','number','onChangeWidth'));
 		object.addProperty('Height','getHeight',createHtmlObject('input','number','onChangeHeight'));
+		object.addProperty('Align','getAlign',createHtmlObject('select',undefined,'onChangeAlign',['none','left','center','right']));
 		object.addProperty('BorderWidth','getBorderWidth',createHtmlObject('input','number','onChangeBorderWidth'));
 		object.addProperty('BorderColor','getBorderColor',createHtmlObject('input','color','onChangeBorderColor'));
 		object.addProperty('BGColor','getBGColor',createHtmlObject('input','color','onChangeBGColor'));
@@ -917,110 +898,23 @@
 					this.rect.fill(value);
 					this.draw();
 				}
-				object.imageObj = new Konva.Image({
-					x: 0,
-					y: 0,
-					image:undefined,
-					name:object.name+'image',
-					width:object.getWidth(),
-					height:object.getHeight()
-				});	
-				object.group.add(object.imageObj);
-				object.setImage = function(value){
-					this.rect.fill(undefined);
-					//Если ссылка пуста - стираем картинку
-					if (value == undefined){
-						this.imageObj.image(undefined);
-						this.draw();
-						return;
-					}
-					//Иначе создаем переменную
-					var newImage = new Image();
-					newImage.src = value;
-					//Загружаем картинку и по мере загрузки прорисовываем
-					newImage.onload = function(){
-						//object.layer.draw();
-						object.draw();
-					}
-					//и добавляем в наш объект
-					this.imageObj.image(newImage);
-					this.showAnchors();
-				}
-				object.getImage = function(){
-					return this.imageObj.image();
-				}
-				object.updateSize = function(_super){
-					return function(){
-						this.imageObj.width(this.getWidth());
-						this.imageObj.height(this.getHeight());
-						return _super.apply(this,arguments);
-					}
-				}(object.updateSize);
-				object.addProperty('BGImage','getImage()',createHtmlObject('input','text','onChangeImage'));
-				
+				createImageObj(object);
+				object.addProperty('BGImage','getImage',createHtmlObject('input','text','onChangeImage'));
 				break;
 			case '<p>':
-				object.innerText = new Konva.Text({
-					x: anchorSize,
-					y: anchorSize,
-					text: 'Simple text',
-					name: object.name+'text',
-					width: object.getWidth(),
-					height: object.getHeight(),
-					fontSize: 14,
-					fontFamily: 'Calibri',
-					fill: 'black'
-				});
-				object.group.add(object.innerText);	
-				object.setInnerText = function(value){
-					this.innerText.text(value);
-					this.draw();
-				}
-				object.setColorInnerText = function(value){
-					this.innerText.fill(value);
-					this.draw();
-				}
-				object.setSizeInnerText = function(value){
-					this.innerText.fontSize(value);
-					this.innerText.width(this.getWidth());
-					this.innerText.height(this.getHeight());
-					this.draw();
-				}
-				object.setFontInnerText = function(value){
-					this.innerText.fontFamily(value);
-					this.draw();
-				}
-				object.setStyleInnerText = function(value){
-					if (value == 'normal' || value == 'bold' || value == 'italic'){
-						this.innerText.fontStyle(value);
-					} else this.innerText.fontStyle('normal');
-					this.draw();
-				}
+				createInnerText(object);
+				object.innerText.text('Simple text');
+				object.innerText.width(object.getWidth());
+				object.innerText.height(object.getHeight());
 				object.setAlignInnerText = function(value){
 					if (value == 'left' || value == 'center' || value == 'right'){
 						this.innerText.align(value);
 					} else this.innerText.align('left');
 					this.draw();
 				}
-				object.getInnerText = function(){
-					return this.innerText.text();
-				}
-				object.getColorInnerText = function(){
-					return this.innerText.fill();
-				}
-				object.getSizeInnerText = function(){
-					return this.innerText.fontSize();
-				}
-				object.getFontInnerText = function(){
-					return this.innerText.fontFamily();
-				}
-				object.getStyleInnerText = function(){
-					return this.innerText.fontStyle();
-				}
 				object.getAlignInnerText = function(){
 					return this.innerText.align();
-				}
-				//А теперь делаем магию js - расширяем функцию 
+				} 
 				object.updateSize = function(_super){
 					return function(){
 						this.innerText.width(this.getWidth() - anchorSize);
@@ -1029,70 +923,20 @@
 					}
 				}(object.updateSize);
 				object.updateSize();
-				object.addProperty('Text','getInnerText',createHtmlObject('textarea',undefined,'onChangeText'));
-				//specific-----------------------------------
-				var htmlElement = createHtmlObject('input','text');
-				htmlElement.setAttribute('class','fontProperties')
-				object.addProperty('Font',undefined,htmlElement);
-				//-------------------------------------------
-				object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
-				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
-				object.addProperty('TextColor','getColorInnerText',createHtmlObject('input','color','onChangeColorText'),'Font');
-				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('input','text','onChangeStyleText'),'Font');
 				object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('select',undefined,'onChangeAlignText',['left','center','right']),'Font');
 				break;
 			case '<input_text>':
 				object.rect.fill('#ffffff');
 				object.rect.stroke('black');
-				object.innerText = new Konva.Text({
-					x: anchorSize,
-					y: anchorSize,
-					text: 'Simple text',
-					name: object.name+'text',
-					width: object.getWidth(),
-					//height: object.getHeight(),
-					fontSize: 14,
-					fontFamily: 'Calibri',
-					fill: 'black'
-				});
-				object.group.add(object.innerText);	
-				object.setInnerText = function(value){
-					this.innerText.text(value);
-					this.draw();
-				}
-				object.setColorInnerText = function(value){
-					this.innerText.fill(value);
-					this.draw();
-				}
-				object.setSizeInnerText = function(value){
-					this.innerText.fontSize(value);
-					this.innerText.width(this.getWidth());
-					this.innerText.height(value);
-					this.draw();
-				}
-				object.setStyleInnerText = function(value){
-					if (value == 'normal' || value == 'bold' || value == 'italic'){
-						this.innerText.fontStyle(value);
-					} else this.innerText.fontStyle('normal');
-					this.draw();
-				}
+				createInnerText(object);
+				object.innerText.width(object.getWidth());
+				object.innerText.text('Simple text');
 				object.setAlignInnerText = function(value){
 					if (value == 'left' || value == 'center' || value == 'right'){
-						this.innerText.align(value);
-					} else this.innerText.align('left');
+						if (value == 'left') this.innerText.align(undefined);
+						else this.innerText.align(value);
+					} else this.innerText.align(undefined); //left;
 					this.draw();
-				}
-				object.getInnerText = function(){
-					return this.innerText.text();
-				}
-				object.getSizeInnerText = function(){
-					return this.innerText.fontSize();
-				}
-				object.getFontInnerText = function(){
-					return this.innerText.fontFamily();
-				}
-				object.getStyleInnerText = function(){
-					return this.innerText.fontStyle();
 				}
 				object.getAlignInnerText = function(){
 					return this.innerText.align();
@@ -1108,15 +952,6 @@
 					}
 				}(object.updateSize);
 				object.updateSize();
-				object.addProperty('Text','getInnerText',createHtmlObject('input','text','onChangeText'));
-				//specific-----------------------------------
-				var htmlElement = createHtmlObject('input','text');
-				htmlElement.setAttribute('class','fontProperties')
-				object.addProperty('Font',undefined,htmlElement);
-				//-------------------------------------------
-				object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
-				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
-				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('select',undefined,'onChangeStyleText',['normal','italic','bold']),'Font');
 				object.addProperty('TextAlign','getAlignInnerText',createHtmlObject('select',undefined,'onChangeAlignText',['left','center','right']),'Font');
 				break;
 			case '<input_button>':
@@ -1124,50 +959,8 @@
 				object.rect.stroke('black');
 				object.rect.strokeWidth(0.5);
 				object.setWidth(50);
-				object.innerText = new Konva.Text({
-					x: anchorSize,
-					y: anchorSize,
-					text: 'Button',
-					name: object.name+'text',
-					//width: object.getWidth(),
-					//height: object.getHeight(),
-					fontSize: 14,
-					fontFamily: 'Calibri',
-					fill: 'black'
-				});
-				object.group.add(object.innerText);	
-				object.setInnerText = function(value){
-					this.innerText.text(value);
-					this.updateSize();
-					this.draw();
-				}
-				object.setColorInnerText = function(value){
-					this.innerText.fill(value);
-					this.draw();
-				}
-				object.setSizeInnerText = function(value){
-					this.innerText.fontSize(value);
-					this.updateSize();
-					this.draw();
-				}
-				object.setStyleInnerText = function(value){
-					if (value == 'normal' || value == 'bold' || value == 'italic'){
-						this.innerText.fontStyle(value);
-					} else this.innerText.fontStyle('normal');
-					this.draw();
-				}
-				object.getInnerText = function(){
-					return this.innerText.text();
-				}
-				object.getSizeInnerText = function(){
-					return this.innerText.fontSize();
-				}
-				object.getFontInnerText = function(){
-					return this.innerText.fontFamily();
-				}
-				object.getStyleInnerText = function(){
-					return this.innerText.fontStyle();
-				}
+				createInnerText(object);
+				object.innerText.text('Button');
 				object.updateSize = function(_super){
 					return function(){
 						if(this.innerText.getWidth() > this.getWidth()){
@@ -1188,15 +981,6 @@
 					}
 				}(object.updateSize);
 				object.updateSize();
-				object.addProperty('Text','getInnerText',createHtmlObject('input','text','onChangeText'));
-				//specific-----------------------------------
-				var htmlElement = createHtmlObject('input','text');
-				htmlElement.setAttribute('class','fontProperties')
-				object.addProperty('Font',undefined,htmlElement);
-				//-------------------------------------------
-				object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
-				object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
-				object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('select',undefined,'onChangeStyleText',['normal','italic','bold']),'Font');
 				break;
 			case '<input_radio>':
 				object.setWidth(object.getHeight());
@@ -1214,12 +998,12 @@
 					x:parseInt(object.getHeight() / 2),
 					y:parseInt(object.getHeight() / 2),
 					radius:parseInt(object.getHeight() / 3),
-					fill:undefined //'#000000'
+					fill:undefined
 				});
 				object.group.add(object.circle);
 				object.group.add(object.checkCircle);
 				object.setChecked = function(value){
-					if(value) this.checkCircle.fill('#000000');
+					if(value == 'true') this.checkCircle.fill('#000000');
 					else this.checkCircle.fill(undefined);
 					this.draw();
 				}
@@ -1246,51 +1030,13 @@
 				//Удаляем не нужные параметры
 				delete object.setBGColor;
 				delete object.getBGColor;
+				object.removeProperty('BGColor');
 				object.rect.fill(undefined);
-				//Добавляем контейнер для отображения изображения
-				object.imageObj = new Konva.Image({
-					x: 0,
-					y: 0,
-					image:undefined,
-					name:object.name+'image',
-					width:object.getWidth(),
-					height:object.getHeight()
-				});	
-				object.group.add(object.imageObj);
-				//value - ссылка на картинку
-				object.setImage = function(value){
-					//Если ссылка пуста - стираем картинку
-					if (value == undefined){
-						this.imageObj.image(undefined);
-						return;
-					}
-					//Иначе создаем переменную
-					var newImage = new Image();
-					newImage.src = value;
-					//Загружаем картинку и по мере загрузки прорисовываем
-					newImage.onload = function(){
-						object.draw();
-					}
-					//и добавляем в наш объект
-					this.imageObj.image(newImage);
-					this.showAnchors();
-				}
-				object.getImage = function(){
-					return this.imageObj.image.src;
-				}
-				//Переопределяем функцию изменения размера для изменения размеров картинки
-				object.updateSize = function(_super){
-					return function(){
-						this.imageObj.width(this.getWidth());
-						this.imageObj.height(this.getHeight());
-						return _super.apply(this,arguments);
-					}
-				}(object.updateSize);
+				createImageObj(object);
 				//Картинка по умолчанию
 				var url = 'https://pp.userapi.com/c636728/v636728764/55555/_Roua36t_6U.jpg';//'https://pp.vk.me/c636328/v636328764/39540/dgYpGwB2zu4.jpg';
 				object.setImage(url);
-				object.removeProperty('BGColor');
-				object.addProperty('SRC','getImage()',createHtmlObject('input','text','onChangeImage'));
+				object.addProperty('SRC','getImage',createHtmlObject('input','text','onChangeImage'));
 				break;
 			case '<h1>':
 				break;
@@ -1304,7 +1050,128 @@
 		object.select(true);
 	}	
 	
+/*
+	Вспомогательные функции для уменьшения количества кода
+*/
+	function createHtmlObject(name, type, func, values){
+		var htmlObj = document.createElement(name);
+		if (type != undefined) htmlObj.setAttribute('type',type);
+		if (func != undefined) htmlObj.setAttribute('onchange',func+'()');
+		if (values != undefined){
+			switch(name){
+				case 'select':
+					values.forEach(function(value) {
+						var option = document.createElement('option');
+						option.value=value;
+						option.text=value;
+						htmlObj.appendChild(option);
+					});
+					break;
+				default:
+					console.log('Не определился тип htmlObject createHtmlObject');
+			}
+		}
+		return htmlObj;
+	}
 	
+	function createInnerText(object){
+		object.innerText = new Konva.Text({
+			x: anchorSize,
+			y: anchorSize,
+			text:'',
+			name: object.name+'text',
+			fontSize: 14,
+			fontFamily: 'Calibri',
+			fill: 'black'
+		});
+		object.group.add(object.innerText);	
+		object.setInnerText = function(value){
+			this.innerText.text(value);
+			this.updateSize();
+			this.draw();
+		}
+		object.setSizeInnerText = function(value){
+			this.innerText.fontSize(value);
+			this.updateSize();
+			this.draw();
+		}
+		object.setColorInnerText = function(value){
+			this.innerText.fill(value);
+			this.draw();
+		}
+		object.setStyleInnerText = function(value){
+			if (value == 'normal' || value == 'bold' || value == 'italic'){
+				if(value == 'normal') this.innerText.fontStyle(undefined); //normal
+				else this.innerText.fontStyle(value);
+			} else this.innerText.fontStyle(undefined); //normal
+			this.draw();
+		}
+		object.getInnerText = function(){
+			return this.innerText.text();
+		}
+		object.getSizeInnerText = function(){
+			return this.innerText.fontSize();
+		}
+		object.getColorInnerText = function(){
+			return this.innerText.fill();
+		}
+		object.getFontInnerText = function(){
+			return this.innerText.fontFamily();
+		}
+		object.getStyleInnerText = function(){
+			return this.innerText.fontStyle();
+		}
+		object.addProperty('Text','getInnerText',createHtmlObject('input','text','onChangeText'));
+		var htmlElement = createHtmlObject('input','text');
+		htmlElement.setAttribute('class','fontProperties')
+		object.addProperty('Font',undefined,htmlElement);
+		object.addProperty('TextFont','getFontInnerText',createHtmlObject('input','text','onChangeTextFont'),'Font');
+		object.addProperty('TextSize','getSizeInnerText',createHtmlObject('input','number','onChangeSizeText'),'Font');
+		object.addProperty('TextColor','getColorInnerText',createHtmlObject('input','color','onChangeColorText'),'Font');
+		object.addProperty('TextStyle','getStyleInnerText',createHtmlObject('select',undefined,'onChangeStyleText',['normal','italic','bold']),'Font');
+	}
+	
+	function createImageObj(object){
+		object.imageObj = new Konva.Image({
+			x: 0,
+			y: 0,
+			image:undefined,
+			name:object.name+'image',
+			width:object.getWidth(),
+			height:object.getHeight()
+		});	
+		object.group.add(object.imageObj);
+		//value - ссылка на картинку
+		object.setImage = function(value){
+			//Если ссылка пуста - стираем картинку
+			if (value == undefined){
+				this.imageObj.image(undefined);
+				return;
+			}
+			//Иначе создаем переменную
+			var newImage = new Image();
+			newImage.src = value;
+			//Загружаем картинку и по мере загрузки прорисовываем
+			newImage.onload = function(){
+				object.draw();
+			}
+			//и добавляем в наш объект
+			this.imageObj.image(newImage);
+			this.showAnchors();
+		}
+		object.getImage = function(){
+			return this.imageObj.image() == undefined ? undefined : this.imageObj.image().src;
+		}
+		object.updateSize = function(_super){
+			return function(){
+				this.imageObj.width(this.getWidth());
+				this.imageObj.height(this.getHeight());
+				return _super.apply(this,arguments);
+			}
+		}(object.updateSize);
+	}
+	
+
 	/*
 		Функция динамического создания таблицы со свойствами под выбранный элемент
 	*/
@@ -1362,7 +1229,7 @@
 			//Т.к. тут будет только ряд свойств, например Font, то проверяем их
 			switch(property.key){
 				case 'Font':
-					input.setAttribute('value', object.getFontInnerText()+', '+object.getSizeInnerText());
+					input.setAttribute('value',object.getSizeInnerText() + ', ' + object.getFontInnerText());
 					break;
 				default:
 			}
@@ -1444,19 +1311,19 @@
 			case 'getType':
 				return object.type;
 			case 'getX':
-				return object.getX();
+				return coordToRealValue(object.getX());//object.getX();
 			case 'getY':
-				return object.getY();
+				return coordToRealValue(object.getY());//object.getY();
 			case 'getAlign':
 				return object.getAlign();
 			case 'getWidth':
-				return object.getWidth();
+				return coordToRealValue(object.getWidth());//object.getWidth();
 			case 'getHeight':
-				return object.getHeight();
+				return coordToRealValue(object.getHeight());//object.getHeight();
 			case 'getBGColor':
 				return object.getBGColor();
-			case 'getBGImage':
-				return object.getBGImage();
+			case 'getImage':
+				return object.getImage();
 			case 'getInnerText':
 				return object.getInnerText();
 			case 'getColorInnerText':
@@ -1569,11 +1436,10 @@
 	function onChangeX(){
 		var newX = parseInt(window.event.srcElement.value);
 		if(newX < 0 || isNaN(newX)){
-			console.log('nan');
 			window.event.srcElement.value = selectedItemObj.getX();
 			return;
 		}
-		selectedItemObj.setX(newX);
+		selectedItemObj.setX(coordToRealValue(newX));
 	}
 	
 	function onChangeY(){
@@ -1582,7 +1448,7 @@
 			window.event.srcElement.value = selectedItemObj.getY();
 			return;
 		}
-		selectedItemObj.setY(newY);
+		selectedItemObj.setY(coordToRealValue(newY));
 	}
 	
 	function onChangeWidth(){
@@ -1591,7 +1457,7 @@
 			window.event.srcElement.value = selectedItemObj.getWidth();
 			return;
 		}
-		selectedItemObj.setWidth(newWidth);
+		selectedItemObj.setWidth(coordToRealValue(newWidth));
 	}
 	
 	function onChangeHeight(){
@@ -1600,7 +1466,7 @@
 			window.event.srcElement.value = selectedItemObj.getHeight();
 			return;
 		}
-		selectedItemObj.setHeight(newHeight);
+		selectedItemObj.setHeight(coordToRealValue(newHeight));
 	}
 	
 	function onChangeBGColor(){
@@ -1822,6 +1688,31 @@
 		}
 		stage.draw();
 	});
+	
+	$('#stretchingCB').on('change', function(e){;
+		stretch = e.currentTarget.checked;
+		if (stretch) $($('tr[id="bodyWidth"]')[0]).hide();
+		else $($('tr[id="bodyWidth"]')[0]).show();
+	});
+	
+	$('#bodySize').on('change', function(e){;
+		var value = e.currentTarget.value;
+		if(value < 300 || value > 10000){
+			e.currentTarget.value = bodySize;
+			return;
+		}
+		bodySize = value;
+	});
+	
+	function coordToBodySize(coord){
+		var koef = stretch ? 1 : stageWidth / bodySize;
+		return Math.round(coord * koef);//parseInt(coord * koef);//Math.round(coord * koef);
+	}
+	
+	function coordToRealValue(coord){
+		var koef = stretch ? 1 : stageWidth / bodySize;
+		return Math.round(coord / koef);//parseInt(coord / koef);//Math.round(coord / koef);
+	}
 	
 	/*
 		Функция перерисовки элементов при изменении размера окна
