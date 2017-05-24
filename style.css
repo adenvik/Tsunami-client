@@ -50,3 +50,23 @@
 	margin-left:5px;
 	margin-bottom:5px;
 }
+.popup{
+	width:100%;
+	min-height:100%;
+	background-color:rgba(0,0,0,0.5);
+	overflow:hidden;
+	position:fixed;
+	top:0;
+	display:none;
+}
+#popup-content{
+	border-width:7px;
+	border-style:double;
+	margin:15% auto;
+	width:500px;
+	height:300px;
+	background-color:#ffffff;
+	border-radius:5px;
+	box-shadow:0 0 10px #000;
+	overflow:auto;
+}

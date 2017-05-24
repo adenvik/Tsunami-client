@@ -19,7 +19,8 @@
 		toolbarElementsCount = 0,
 		copyObject,
 		elemsCount={},
-		elems=[];
+		elems=[],
+		imgs = [];
 		
 	var trigger = false,
 		stretch = false, 
@@ -62,30 +63,26 @@
 		Функция создания сетки
 	*/
 	function createCanvasCells() {
-		gridSize = coordToBodySize(gridSize);//coordToRealValue(gridSize);
-		console.log(gridSize);
-		console.log(coordToRealValue(gridSize));
+		var gs = coordToRealValue(gridSize);//coordToBodySize(gridSize);//coordToRealValue(gridSize);
 		gridLayer.destroyChildren();
 		var count = 0;
-		for (var i = 0; i < stageHeight / gridSize; i++) {
+		for (var i = 0; i < stageHeight / gs; i++) {
 			var line = new Konva.Line({
-				points: [0, i * gridSize, stageWidth, i * gridSize],
+				points: [0, i * gs, stageWidth, i * gs],
 				stroke: 'black',
 				strokeWidth: 0.1
 			});
 			gridLayer.add(line);
 		}
-		for (var i = 0; i < stageWidth / gridSize; i++) {
+		for (var i = 0; i < stageWidth / gs; i++) {
 			
 			var line = new Konva.Line({
-				points: [i * gridSize, 0, i * gridSize, stageHeight],
+				points: [i * gs, 0, i * gs, stageHeight],
 				stroke: 'black',
 				strokeWidth: 0.1
 			});
 			gridLayer.add(line);
-			count++;
 		}
-		console.log(count);
 		gridLayer.draw();
 	}
 
@@ -1291,10 +1288,11 @@
 				td1.appendChild(checkbox);
 				td1.appendChild(document.createTextNode('Без цвета'));
 			}
-			if(property.key == 'BGImage'){
+			if(property.key == 'BGImage' || property.key == 'SRC'){
 				//Добавить onclick для открытия списка изображений или чего-то подобного
 				var button = document.createElement('button');
 				button.setAttribute('style','width:90%');
+				button.setAttribute('onclick','show(true)');
 				button.appendChild(document.createTextNode('Выбрать..'));
 				td1.appendChild(button);
 			}
@@ -1311,15 +1309,15 @@
 			case 'getType':
 				return object.type;
 			case 'getX':
-				return coordToRealValue(object.getX());//object.getX();
+				return coordToBodySize(object.getX());//object.getX();
 			case 'getY':
-				return coordToRealValue(object.getY());//object.getY();
+				return coordToBodySize(object.getY());//object.getY();
 			case 'getAlign':
 				return object.getAlign();
 			case 'getWidth':
-				return coordToRealValue(object.getWidth());//object.getWidth();
+				return coordToBodySize(object.getWidth());//object.getWidth();
 			case 'getHeight':
-				return coordToRealValue(object.getHeight());//object.getHeight();
+				return coordToBodySize(object.getHeight());//object.getHeight();
 			case 'getBGColor':
 				return object.getBGColor();
 			case 'getImage':
@@ -1704,14 +1702,78 @@
 		bodySize = value;
 	});
 	
+/*
+	Функции по работе с popup контентом (выбор картинки)
+*/
+	function getImage(){
+		imgs.push('https://pp.userapi.com/c636728/v636728764/55555/_Roua36t_6U.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50f84/lCaA8wCa7pk.jpg');
+		imgs.push('https://pp.userapi.com/c637830/v637830742/4251b/JVCQo5CSrzk.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50f97/MmPSo-CYGX8.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50f9e/-zZEnfPYRWI.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50fa5/iavnFC2XazM.jpg');
+		imgs.push('https://pp.userapi.com/c638523/v638523934/3fa7b/HmqVqFOZUuY.jpg');
+	}
+
+	function fillImageDiv(){
+		var imageDiv = document.getElementById('popup-content');
+		imageDiv.innerHTML = '';
+		
+		var width = parseInt(stageWidth / 2);
+		var imageWidth = 150;
+		$(imageDiv).width(width);
+		var countInRow = parseInt(width / imageWidth),
+			count = 1;
+		var table = document.createElement('table');
+		table.setAttribute('align','center');
+		var tr = document.createElement('tr');
+		for(var i = 0; i < imgs.length; i++){
+			if(count > countInRow){
+				table.appendChild(tr);
+				tr = document.createElement('tr');
+				count = 1;
+			}
+			var td = document.createElement('td');
+			td.appendChild(createImg(imgs[i]));
+			tr.appendChild(td);
+			count++;
+		}
+		if(count != 0) table.appendChild(tr);
+		imageDiv.appendChild(table);
+	}
+	function createImg(imgInfo){
+		var img = document.createElement('img');
+		img.setAttribute('src',imgInfo);
+		img.setAttribute('width',150);
+		img.setAttribute('height',130);
+		img.setAttribute('style','margin:5px');
+		img.setAttribute('onclick','c('+'"'+imgInfo+'"'+')');
+		return img;
+	}
+	
+	function c(imgSrc){
+		if(selectedItemObj == undefined) return;
+		selectedItemObj.setImage(imgSrc);
+		propertiesDisplay();
+	}
+	
+	function show(state){
+		var imageDiv = $($('.popup')[0]);
+		if(state) imageDiv.show();
+		else imageDiv.hide();
+	}
+/*
+	----------------------------------------------------
+*/
+	
 	function coordToBodySize(coord){
-		var koef = stretch ? 1 : stageWidth / bodySize;
+		var koef = stretch ? 1 : bodySize / stageWidth;
 		return Math.round(coord * koef);//parseInt(coord * koef);//Math.round(coord * koef);
 	}
 	
 	function coordToRealValue(coord){
 		var koef = stretch ? 1 : stageWidth / bodySize;
-		return Math.round(coord / koef);//parseInt(coord / koef);//Math.round(coord / koef);
+		return Math.round(coord * koef);//parseInt(coord * koef);//Math.round(coord * koef);
 	}
 	
 	/*
@@ -1746,6 +1808,7 @@
 				elems[i].setWidth(parseInt(elems[i].getWidth() * koef));
 			}
 		}
+		fillImageDiv();
 	};
 	
 	/*
@@ -1888,3 +1951,5 @@
 	Область кода, выполняемого при старте
 */
 	generateTemplate();
+	getImage();
+	fillImageDiv();
