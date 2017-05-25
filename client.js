@@ -143,7 +143,7 @@
 	});
 	
 	stage.on('dragmove', function(evt){
-		selectedItemObj.setAlign('none');
+		if(selectedItemObj != undefined) selectedItemObj.setAlign('none');
 	});
 	
 	stage.on('mouseup', function(evt){
@@ -1023,7 +1023,7 @@
 				}(object.updateSize);
 				object.addProperty('Checked','isChecked',createHtmlObject('select',undefined,'onChangeChecked',['true','false']));
 				break;	
-			case '<image>':
+			case '<img>':
 				//Удаляем не нужные параметры
 				delete object.setBGColor;
 				delete object.getBGColor;
@@ -1143,6 +1143,7 @@
 			//Если ссылка пуста - стираем картинку
 			if (value == undefined){
 				this.imageObj.image(undefined);
+				this.draw();
 				return;
 			}
 			//Иначе создаем переменную
@@ -1359,7 +1360,7 @@
 		//И шаблоны элементов
 		new toolBarElement('<div>',"#d6d6d6");
 		new toolBarElement('<p>',"red", 40);
-		new toolBarElement('<image>','#000000');
+		new toolBarElement('<img>','#000000');
 		
 		new toolBarElement('<input_text>','#ffffff',20);
 		new toolBarElement('<input_button>','#e6e6e6',20);
@@ -1505,6 +1506,7 @@
 	
 	function onChangeImage(){
 		var newImageSrc = window.event.srcElement.value;
+		if (newImageSrc == '') newImageSrc = undefined;
 		selectedItemObj.setImage(newImageSrc);
 	}
 	
@@ -1637,7 +1639,9 @@
 	Область функций обработки окна
 */
 	$('#genHtml').on('click', function (e) {
-		alert("NO");
+		alert('start');
+		parseJSON('[{"name":"body","bodySize":1000},{"name":"div","attributes":[{"key":"left","value":205},{"key":"top","value":22},{"key":"width","value":655},{"key":"height","value":159}],"tags":[]},{"name":"div","attributes":[{"key":"left","value":454},{"key":"top","value":298},{"key":"width","value":142},{"key":"height","value":60}],"tags":[{"name":"input", "type":"text", "attributes":[{"key":"left","value":0},{"key":"top","value":36},{"key":"width","value":142},{"key":"height","value":17},{"key":"border-color","value":"black"},{"key":"background-color","value":"#ffffff"},{"key":"value","value":""},{"key":"font-family","value":"Calibri"},{"key":"font-size","value":14},{"key":"color","value":"black"}],"tags":[]}]}]');
+		
 	});
 	
 	$('#gridShowCB').on('change', function(e){
@@ -1830,6 +1834,14 @@
 	*/
 	function createJSONArray(){
 		var jsonArray = [];
+		//Создаем объект c параметрами body
+		var obj = new Object();
+		obj.name = 'body';
+		if(stretch) obj.stretch = true;
+		else obj.bodySize = bodySize;
+		jsonArray.push(obj);
+		//Переносим текущий объект на основной слой
+		deselectCurrentItem();
 		//Получаем объекты на рабочем слое, кроме тех, которые уже лежат в других объектах
 		var objects = mainLayer.getChildren();
 		//И добавляем его представление в JSON в наш массив
@@ -1851,10 +1863,7 @@
 		var nameObj = String(object.type).substring(1,String(object.type).length - 1).split('_');
 		obj.name = nameObj[0];
 		if(nameObj.length > 1){
-			var tempObj = new Object();
-			tempObj.key = 'type';
-			tempObj.value = nameObj[1];
-			attr.push(tempObj);
+			obj.type = nameObj[1];
 		}
 		//Собираем значения свойств объекта
 		for(var i = 1; i < object.properties.length; i++){
@@ -1942,11 +1951,151 @@
 					obj.key = property.key.toLowerCase();
 			}
 			obj.value = getCurrentValue(object,property.funcName);
-			if (obj.value == undefined) return [];
+			var defaultValue = [undefined,'left','none','normal'];
+			if (defaultValue.includes(obj.value)) return [];
 			else return obj;
 		}
 	}
 	
+	function parseJSON(json){
+		var parsed = [];
+		json = JSON.parse(json);
+		//Первый элемент - body
+		if (json[0].stretch != undefined){
+			stretch = true;
+			$($('#stretchingCB')[0]).checked = true;
+		}else {
+			$($('#stretchingCB')[0]).checked = false;
+			bodySize = parseInt(json[0].bodySize);
+		}
+		//Внешний вид
+		if (stretch) $($('tr[id="bodyWidth"]')[0]).hide();
+		else $($('tr[id="bodyWidth"]')[0]).show();
+		//Очищаем наши элементы
+		deselectCurrentItem();
+		/*var objects = mainLayer.getChildren();
+		for(var i = 0; i < objects.length; i++){
+			console.log('destroy ' + objects[i].name);
+			objects[i].destroy();
+		}
+		console.log('all destroy');*/
+		/*for (var i = elems.length - 1; i >= toolbarElementsCount; i--){
+			console.log(elems[i]);
+			elems[i].group.destroy();
+			console.log(elems[i]);
+		}*/
+		elems.splice(toolbarElementsCount, elems.length - toolbarElementsCount);
+		mainLayer.destroyChildren();
+		mainLayer.draw();
+		
+		//Удаляем из массива
+		//elems.splice(toolbarElementsCount, elems.length - toolbarElementsCount);
+		//А теперь создаем элементы из json
+		//for(var i = 1; i < json.length; i++){
+			createElem(json[1]);
+		//}
+		deselectCurrentItem();
+	}
+	
+	function createElem(jsonInfo, parentObj){
+		deselectCurrentItem();
+		var name = jsonInfo.name;
+		if(jsonInfo.type != undefined) name = '<' + name + '_' + jsonInfo.type + '>';
+		else name = '<' + name + '>';
+		console.log(name);
+		//Находим элемент, если он есть
+		for(var i = 0; i < toolbarElementsCount; i++){
+			if (name == elems[i].type){
+				//Клонируем объект
+				var clone = cloneToolbarElement(elems[i].group);
+				
+				moveToMainLayer(clone.group);
+				//Если объект содержится в другом объекте - выставляем ему родителя
+				if(parentObj != undefined){
+					selectedItemObj.parentObj = parentObj;
+					selectedItemObj.group.moveTo(parentObj.group);
+					//parentObj.updateSize();
+				}
+				//Выставляем свойства
+				var attr = jsonInfo.attributes;
+				if(attr != undefined){
+					for(var a = 0; a < attr.length; a++){
+						try{
+						switch(attr[a].key){
+							case 'left':
+								selectedItemObj.setX(parseInt(attr[a].value));
+								break;
+							case 'top':
+								selectedItemObj.setY(parseInt(attr[a].value));
+								break;
+							case 'align':
+								selectedItemObj.setAlign(attr[a].value);
+								break;
+							case 'width':
+								selectedItemObj.setWidth(parseInt(attr[a].value));
+								break;
+							case 'height':
+								selectedItemObj.setHeight(parseInt(attr[a].value));
+								break;
+							case 'checked':
+								selectedItemObj.setChecked(attr[a].value);
+								break;
+							case 'text':
+								selectedItemObj.setInnerText(attr[a].value);
+								break;
+							case 'value':
+								if (name == '<input_text>') selectedItemObj.setInnerText(attr[a].value);
+								else console.log('parse json attr "'+attr[a].key + '" from ' + name);
+								break;
+							case 'background-color':
+								selectedItemObj.setBGColor(attr[a].value);
+								break;
+							case 'src':
+							case 'background-image':
+								selectedItemObj.setImage(attr[a].value);
+								break;
+							case 'font-family':
+								selectedItemObj.setFontInnerText(attr[a].value);
+								break;
+							case 'font-size':
+								selectedItemObj.setSizeInnerText(parseInt(attr[a].value));
+								break;
+							case 'color':
+								selectedItemObj.setColorInnerText(attr[a].value);
+								break;
+							case 'font-style':
+								selectedItemObj.setStyleInnerText(attr[a].value);
+								break;
+							case 'text-align':
+								selectedItemObj.setAlignInnerText(attr[a].value);
+								break;
+							case 'border-width':
+								selectedItemObj.setBorderWidth(parseInt(attr[a].value));
+								break;
+							case 'border-color':
+								selectedItemObj.setBorderColor(attr[a].value);
+								break;
+							default:
+								console.log('not supported attr "'+attr[a].key+'"');
+						}
+						}catch(ex){
+							console.log('err in set attr "' + attr[a].key + '" with value: "'+attr[a].value +'" on object.type: "'+selectedItemObj.type+'"');
+						}
+					}
+				}
+				if(parentObj != undefined) parentObj.updateSize();
+				
+				if(jsonInfo.tags != undefined){
+					var tags = jsonInfo.tags;
+					for(var t = 0; t < tags.length; t++){
+						createElem(tags[t],selectedItemObj);
+					}
+				}
+				//Выходим
+				break;
+			}
+		}
+	}
 /*
 	Область кода, выполняемого при старте
 */
