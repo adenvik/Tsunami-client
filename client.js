@@ -263,7 +263,7 @@
 					if (y < 0) y = 0;
 					if (y > toolbarHeight - rect.height()) y = toolbarHeight - rect.height();
 				}
-			} else {
+			} else if (this.getStage() == stage){
 				//Иначе объект находится в рабочей области
 				position = stage.getPointerPosition();
 				if (x < 0) x = 0;
@@ -579,10 +579,10 @@
 		clone.setY(object.getY());
 		//Добавляем ему возможность перемещения
 		clone.group.draggable(true);
-		clone.group.startDrag();
+		//clone.group.startDrag();
 		//Помечаем текущий элемент
-		selectedItem = clone.group;
-		selectedItemObj = clone;
+		//selectedItem = clone.group;
+		//selectedItemObj = clone;
 		return clone;
 	}
 	
@@ -805,8 +805,6 @@
 			
 			this.group.get('.' + this.name + 'bottomLeft')[0].setY(newHeight - anchorSize);
 			if (this.parentObj != undefined){
-				console.log(this);
-				console.log(this.parentObj);
 				this.parentObj.updateSize();
 			}
 		}
@@ -873,9 +871,16 @@
 				}
 			}
 		}
+		
 		/*
 			Добавляем общие параметры
 		*/
+		object.getBorderRadius = function(){
+			return this.rect.cornerRadius() == 0 ? undefined : this.rect.cornerRadius();
+		}
+		object.setBorderRadius = function(value){
+			this.rect.cornerRadius(value);
+		}
 		
 		object.addProperty('Type','getType',createHtmlObject('input','text'));
 		object.addProperty('Left','getX',createHtmlObject('input','number','onChangeX'));
@@ -885,6 +890,7 @@
 		object.addProperty('Align','getAlign',createHtmlObject('select',undefined,'onChangeAlign',['none','left','center','right']));
 		object.addProperty('BorderWidth','getBorderWidth',createHtmlObject('input','number','onChangeBorderWidth'));
 		object.addProperty('BorderColor','getBorderColor',createHtmlObject('input','color','onChangeBorderColor'));
+		object.addProperty('BorderRadius','getBorderRadius',createHtmlObject('input','number','onChangeBorderRadius'));
 		object.addProperty('BGColor','getBGColor',createHtmlObject('input','color','onChangeBGColor'));
 		//Добавляем специфические элементы в зависимости от типа
 		switch(object.type){
@@ -1103,6 +1109,9 @@
 			} else this.innerText.fontStyle(undefined); //normal
 			this.draw();
 		}
+		object.setFontInnerText = function(value){
+			this.innerText.fontFamily(value);
+		}
 		object.getInnerText = function(){
 			return this.innerText.text();
 		}
@@ -1146,6 +1155,11 @@
 				this.draw();
 				return;
 			}
+			if (!existImg(value)){
+				this.imageObj.image(undefined);
+				this.draw();
+				return;
+			}
 			//Иначе создаем переменную
 			var newImage = new Image();
 			newImage.src = value;
@@ -1153,6 +1167,7 @@
 			newImage.onload = function(){
 				object.draw();
 			}
+			
 			//и добавляем в наш объект
 			this.imageObj.image(newImage);
 			this.showAnchors();
@@ -1168,7 +1183,6 @@
 			}
 		}(object.updateSize);
 	}
-	
 
 	/*
 		Функция динамического создания таблицы со свойствами под выбранный элемент
@@ -1339,6 +1353,8 @@
 				return object.getBorderWidth();
 			case 'getBorderColor':
 				return object.getBorderColor();
+			case 'getBorderRadius':
+				return object.getBorderRadius();
 			case 'isChecked':
 				return object.isChecked();
 			default:
@@ -1430,6 +1446,15 @@
 	function onChangeBorderColor(){
 		var newColor = window.event.srcElement.value;
 		selectedItemObj.setBorderColor(newColor);
+	}
+	
+	function onChangeBorderRadius(){
+		var newRadius = parseInt(window.event.srcElement.value);
+		if (newRadius < 0 && isNaN(newRadius)){
+			window.event.srcElement.value = selectedItemObj.getBorderRadius();
+			return;
+		}
+		selectedItemObj.setBorderRadius(newRadius);
 	}
 	
 	function onChangeX(){
@@ -1638,12 +1663,6 @@
 /*
 	Область функций обработки окна
 */
-	$('#genHtml').on('click', function (e) {
-		alert('start');
-		parseJSON('[{"name":"body","bodySize":1000},{"name":"div","attributes":[{"key":"left","value":205},{"key":"top","value":22},{"key":"width","value":655},{"key":"height","value":159}],"tags":[]},{"name":"div","attributes":[{"key":"left","value":454},{"key":"top","value":298},{"key":"width","value":142},{"key":"height","value":60}],"tags":[{"name":"input", "type":"text", "attributes":[{"key":"left","value":0},{"key":"top","value":36},{"key":"width","value":142},{"key":"height","value":17},{"key":"border-color","value":"black"},{"key":"background-color","value":"#ffffff"},{"key":"value","value":""},{"key":"font-family","value":"Calibri"},{"key":"font-size","value":14},{"key":"color","value":"black"}],"tags":[]}]}]');
-		
-	});
-	
 	$('#gridShowCB').on('change', function(e){
 		gridShow = e.currentTarget.checked;
 		if(gridShow){
@@ -1709,16 +1728,6 @@
 /*
 	Функции по работе с popup контентом (выбор картинки)
 */
-	function getImage(){
-		imgs.push('https://pp.userapi.com/c636728/v636728764/55555/_Roua36t_6U.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50f84/lCaA8wCa7pk.jpg');
-		imgs.push('https://pp.userapi.com/c637830/v637830742/4251b/JVCQo5CSrzk.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50f97/MmPSo-CYGX8.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50f9e/-zZEnfPYRWI.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50fa5/iavnFC2XazM.jpg');
-		imgs.push('https://pp.userapi.com/c638523/v638523934/3fa7b/HmqVqFOZUuY.jpg');
-	}
-
 	function fillImageDiv(){
 		var imageDiv = document.getElementById('popup-content');
 		imageDiv.innerHTML = '';
@@ -1738,7 +1747,10 @@
 				count = 1;
 			}
 			var td = document.createElement('td');
-			td.appendChild(createImg(imgs[i]));
+			var img = createImg(imgs[i]);
+			if (img == undefined) continue;
+			td.appendChild(img);
+			//td.appendChild(createImg(imgs[i]));
 			tr.appendChild(td);
 			count++;
 		}
@@ -1748,11 +1760,21 @@
 	function createImg(imgInfo){
 		var img = document.createElement('img');
 		img.setAttribute('src',imgInfo);
+		img.setAttribute('id','img');
+		
+		if (!existImg(imgInfo)) return undefined;
+		
 		img.setAttribute('width',150);
 		img.setAttribute('height',130);
 		img.setAttribute('style','margin:5px');
 		img.setAttribute('onclick','c('+'"'+imgInfo+'"'+')');
 		return img;
+	}
+	
+	function existImg(img){
+		var i = new Image();
+		i.src = img;
+		return i.height != 0;
 	}
 	
 	function c(imgSrc){
@@ -1947,6 +1969,8 @@
 				case 'BorderColor':
 					obj.key = 'border-color';
 					break;
+				case 'BorderRadius':
+					obj.key = 'border-radius';
 				default:
 					obj.key = property.key.toLowerCase();
 			}
@@ -1957,6 +1981,9 @@
 		}
 	}
 	
+	/*
+		Функция распаковки 
+	*/
 	function parseJSON(json){
 		var parsed = [];
 		json = JSON.parse(json);
@@ -1971,29 +1998,17 @@
 		//Внешний вид
 		if (stretch) $($('tr[id="bodyWidth"]')[0]).hide();
 		else $($('tr[id="bodyWidth"]')[0]).show();
-		//Очищаем наши элементы
+		//Убираем выделение
 		deselectCurrentItem();
-		/*var objects = mainLayer.getChildren();
-		for(var i = 0; i < objects.length; i++){
-			console.log('destroy ' + objects[i].name);
-			objects[i].destroy();
-		}
-		console.log('all destroy');*/
-		/*for (var i = elems.length - 1; i >= toolbarElementsCount; i--){
-			console.log(elems[i]);
-			elems[i].group.destroy();
-			console.log(elems[i]);
-		}*/
+		//Удаляем из массива
 		elems.splice(toolbarElementsCount, elems.length - toolbarElementsCount);
+		//И с рабочего слоя
 		mainLayer.destroyChildren();
 		mainLayer.draw();
-		
-		//Удаляем из массива
-		//elems.splice(toolbarElementsCount, elems.length - toolbarElementsCount);
 		//А теперь создаем элементы из json
-		//for(var i = 1; i < json.length; i++){
-			createElem(json[1]);
-		//}
+		for(var i = 1; i < json.length; i++){
+			createElem(json[i]);
+		}
 		deselectCurrentItem();
 	}
 	
@@ -2002,13 +2017,12 @@
 		var name = jsonInfo.name;
 		if(jsonInfo.type != undefined) name = '<' + name + '_' + jsonInfo.type + '>';
 		else name = '<' + name + '>';
-		console.log(name);
+		//console.log(name);
 		//Находим элемент, если он есть
 		for(var i = 0; i < toolbarElementsCount; i++){
 			if (name == elems[i].type){
 				//Клонируем объект
 				var clone = cloneToolbarElement(elems[i].group);
-				
 				moveToMainLayer(clone.group);
 				//Если объект содержится в другом объекте - выставляем ему родителя
 				if(parentObj != undefined){
@@ -2096,6 +2110,101 @@
 			}
 		}
 	}
+	
+	/*
+		Функция получения ссылок на картинки от сервера и заполнение ими массива
+	*/
+	function getImage(){
+		imgs.push('https://pp.userapi.com/c636728/v636728764/55555/_Roua36t_6U.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50f84/lCaA8wCa7pk.jpg');
+		imgs.push('https://pp.userapi.com/c637830/v637830742/4251b/JVCQo5CSrzk.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50f97/MmPSo-CYGX8.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50f9e/-zZEnfPYRWI.jpg');
+		imgs.push('https://pp.userapi.com/c637216/v637216441/50fa5/iavnFC2XazM.jpg');
+		imgs.push('https://pp.userapi.com/c638523/v638523934/3fa7b/HmqVqFOZUuY.jpg');
+	}
+	/*
+		Функция отправки запроса на генерацию 
+	*/
+	$('#genHtml').on('click', function (e) {
+		var data = JSON.stringify(createJSONArray());
+        //console.log(data);
+        $.ajax({
+            type: "POST",
+            url: "/Main/generateHTML",
+            data: {JSONData: data},
+            success: function(response, status, xhr) {
+                // check for a filename
+                var filename = "";
+                var disposition = xhr.getResponseHeader('Content-Disposition');
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    var matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                }
+                var type = xhr.getResponseHeader('Content-Type');
+                var blob = new Blob([response], { type: type });
+                if (typeof window.navigator.msSaveBlob !== 'undefined') {
+                    // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
+                    window.navigator.msSaveBlob(blob, filename);
+                } else {
+                    var URL = window.URL || window.webkitURL;
+                    var downloadUrl = URL.createObjectURL(blob);
+
+                    if (filename) {
+                        // use HTML5 a[download] attribute to specify filename
+                        var a = document.createElement("a");
+                        // safari doesn't support this yet
+                        if (typeof a.download === 'undefined') {
+                            window.location = downloadUrl;
+                        } else {
+                            a.href = downloadUrl;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                        }
+                    } else {
+                        window.location = downloadUrl;
+                    }
+                    setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
+                }
+            }
+        });
+	});
+	
+	/*
+		Функция отправки запроса на реверс-инжиниринг
+	*/
+	$('#openHtml').on('click', function (e) {
+		//parseJSON('[{"name":"body","bodySize":1000},{"name":"div","attributes":[{"key":"left","value":205},{"key":"top","value":22},{"key":"width","value":655},{"key":"height","value":159}],"tags":[]},{"name":"div","attributes":[{"key":"left","value":454},{"key":"top","value":298},{"key":"width","value":142},{"key":"height","value":60}],"tags":[{"name":"input", "type":"text", "attributes":[{"key":"left","value":0},{"key":"top","value":36},{"key":"width","value":142},{"key":"height","value":17},{"key":"border-color","value":"black"},{"key":"background-color","value":"#ffffff"},{"key":"value","value":""},{"key":"font-family","value":"Calibri"},{"key":"font-size","value":14},{"key":"color","value":"black"}],"tags":[]}]}]');
+		e.preventDefault();
+        var files = document.getElementById('uploadFile').files;
+        if (files.length > 0) {
+            if (window.FormData !== undefined) {
+                var data = new FormData();
+                for (var x = 0; x < files.length; x++) {
+                    data.append("file" + x, files[x]);
+                }
+ 
+                $.ajax({
+                    type: "POST",
+                    url: '/Main/generateProject',
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    success: function (result) {
+                        //generateTemplate();
+                        parseJSON(result);
+                    },
+                    error: function (xhr, status, p3) {
+                        alert(xhr.responseText);
+                    }
+                });
+            } else {
+                alert("Браузер не поддерживает загрузку файлов HTML5!");
+            }
+        }
+	});
 /*
 	Область кода, выполняемого при старте
 */
