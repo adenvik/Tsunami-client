@@ -272,8 +272,12 @@
 				if (y > stageHeight - rect.height()) y = stageHeight - rect.height();
 				//Если используется сетка - выравниваем координаты под сетку
 				if (gridUse){
-					x = x - (x % gridSize);
+					/*
+					x = x - (x % gridSize); 
 					y = y - (y % gridSize);
+					*/
+					x = x - (x % coordToRealValue(gridSize));
+					y = y - (y % coordToRealValue(gridSize));
 				}
 			}
 			//Изменяем координаты в объекте
@@ -412,14 +416,16 @@
 		
 		this.setBorderWidth = function(value){
 			this.rect.strokeWidth(value);
+			this.draw();
 		}
 		
 		this.setBorderColor = function(value){
 			this.rect.stroke(value);
+			this.draw();
 		}
 		
 		this.getBorderWidth = function(){
-			var retValue = this.rect.strokeWidth();
+			var retValue = parseInt(this.rect.strokeWidth());
 			return retValue == 0 ? undefined : retValue;
 		}
 		
@@ -467,8 +473,12 @@
 			if (this.getAbsolutePosition().y > stageHeight)
 				y = stageHeight - object.getAbsolutePosition().y - anchorSize;
 			if (gridUse){
-				x = x - x % gridSize;
-				y = y - y % gridSize;
+				/*
+				x = x - (x % gridSize); 
+				y = y - (y % gridSize);
+				*/
+				x = x - (x % coordToRealValue(gridSize));
+				y = y - (y % coordToRealValue(gridSize));
 			}
 			this.setX(x);
 			this.setY(y);
@@ -962,8 +972,10 @@
 				object.rect.stroke('black');
 				object.rect.strokeWidth(0.5);
 				object.setWidth(50);
+				object.addProperty('Value','getInnerText',createHtmlObject('input','text','onChangeText'));
 				createInnerText(object);
 				object.innerText.text('Button');
+				object.removeProperty('Text');
 				object.updateSize = function(_super){
 					return function(){
 						if(this.innerText.getWidth() > this.getWidth()){
@@ -985,7 +997,71 @@
 				}(object.updateSize);
 				object.updateSize();
 				break;
+			case '<input_checkbox>':
+				//object.setBGColor('#bebebe');
+				object.removeProperty('BGColor');
+				object.removeProperty('BorderWidth');
+				object.removeProperty('BorderColor');
+				object.removeProperty('BorderRadius');
+				object.setWidth(object.getHeight());
+				
+				object.cbRect = new Konva.Rect({
+					name: this.name + 'CBRect',
+					x: 0,
+					y: 0,
+					width: object.getWidth(),
+					height: object.getHeight(),
+					fill: '#bebebe'
+				});
+				object.group.add(object.cbRect);
+				object.checkRect = new Konva.Rect({
+					name: this.name + 'CheckRect',
+					x: (object.getWidth() / 6),
+					y: (object.getHeight() / 6),
+					width: (object.getWidth() / 3) * 2,
+					height: (object.getHeight() / 3) * 2,
+					fill: '#000000'
+				});
+				object.group.add(object.checkRect);
+				object.setChecked = function(value){
+					if(value == 'true')this.checkRect.fill('#000000');
+					else this.checkRect.fill(undefined);
+					this.draw();
+				}
+				object.isChecked = function(){
+					return this.checkRect.fill() != undefined ? true : false;
+				}
+				object.addProperty('Checked','isChecked',createHtmlObject('select',undefined,'onChangeChecked',['true','false']));
+				object.setCheckboxValue = function(value){
+					this.checkboxValue = value;
+				}
+				object.getCheckboxValue = function(){
+					return this.checkboxValue;
+				}
+				object.addProperty('Value','getCheckboxValue',createHtmlObject('input','text','onChangeText'));
+				
+				object.updateSize = function(_super){
+					return function(){
+						var size = this.getWidth() > this.getHeight() ? this.getHeight() : this.getWidth();
+						this.cbRect.x(this.getWidth() / 2 - size / 2);
+						this.cbRect.y(this.getHeight() / 2 - size / 2);
+						this.cbRect.width(size);
+						this.cbRect.height(size);
+						
+						this.checkRect.x(this.cbRect.x() + size / 6);
+						this.checkRect.y(this.cbRect.y() + size / 6);
+						this.checkRect.width((size / 3) * 2);
+						this.checkRect.height((size / 3) * 2);
+						
+						return _super.apply(this,arguments);
+					}
+				}(object.updateSize);
+				break;
 			case '<input_radio>':
+				object.removeProperty('BGColor');
+				object.removeProperty('BorderWidth');
+				object.removeProperty('BorderColor');
+				object.removeProperty('BorderRadius');
 				object.setWidth(object.getHeight());
 				object.circle = new Konva.Circle({
 					name:this.name + 'Circle',
@@ -1006,24 +1082,59 @@
 				object.group.add(object.circle);
 				object.group.add(object.checkCircle);
 				object.setChecked = function(value){
-					if(value == 'true') this.checkCircle.fill('#000000');
+					if(value == 'true'){
+						this.checkCircle.fill('#000000');
+						this.updateChecked();
+					}
 					else this.checkCircle.fill(undefined);
 					this.draw();
 				}
 				object.isChecked = function(){
 					return this.checkCircle.fill() != undefined ? true : false;
 				}
+				object.setRadioButtonName = function(value){
+					this.radioButtonName = value;
+					//Если выставляем свойство в true - необходимо, чтобы все другие radio c таким же именем стали в false (в пределах родителя)
+					if(this.isChecked()) this.updateChecked();
+				}
+				object.updateChecked = function(){
+					var p, name = this.radioButtonName;
+					if(this.parentObj == undefined) p = mainLayer;
+					else p = parentObj.group;
+					p.getChildren().forEach(function(item){
+						if(item.getType() == 'Group'){
+							var elem = findElem(item);
+							//Если нашли radio и их имена совпали
+							if(elem.type == object.type && name == elem.radioButtonName){
+								elem.setChecked(false);
+							}
+						}
+					});
+				}
+				object.getRadioButtonName = function(){
+					return this.radioButtonName;
+				}
+				object.addProperty('Name','getRadioButtonName',createHtmlObject('input','text','onChangeRadioButtonName'));
+				
+				object.setRadioButtonValue = function(value){
+					this.radioButtonValue = value;
+				}
+				object.getRadioButtonValue = function(){
+					return this.radioButtonValue == '' ? undefined : this.radioButtonValue;
+				}
+				object.addProperty('Value','getRadioButtonValue',createHtmlObject('input','text','onChangeText'));
+
 				object.updateSize = function(_super){
 					return function(){
 						if(this.getHeight() > this.getWidth()) this.setHeight(this.getWidth());
 						if(this.getWidth() > this.getHeight()) this.setWidth(this.getHeight());
-						this.circle.x(parseInt(object.getHeight() / 2));
-						this.circle.y(parseInt(object.getHeight() / 2));
-						this.circle.radius(parseInt(object.getHeight() / 2));
+						this.circle.x(parseInt(this.getHeight() / 2));
+						this.circle.y(parseInt(this.getHeight() / 2));
+						this.circle.radius(parseInt(this.getHeight() / 2));
 						
-						this.checkCircle.x(parseInt(object.getHeight() / 2));
-						this.checkCircle.y(parseInt(object.getHeight() / 2));
-						this.checkCircle.radius(parseInt(object.getHeight() / 3));
+						this.checkCircle.x(parseInt(this.getHeight() / 2));
+						this.checkCircle.y(parseInt(this.getHeight() / 2));
+						this.checkCircle.radius(parseInt(this.getHeight() / 3));
 						return _super.apply(this,arguments);
 					}
 				}(object.updateSize);
@@ -1040,8 +1151,6 @@
 				var url = 'https://pp.userapi.com/c636728/v636728764/55555/_Roua36t_6U.jpg';//'https://pp.vk.me/c636328/v636328764/39540/dgYpGwB2zu4.jpg';
 				object.setImage(url);
 				object.addProperty('SRC','getImage',createHtmlObject('input','text','onChangeImage'));
-				break;
-			case '<h1>':
 				break;
 			default:
 				console.log('неизвестный тип: ' + object.type);
@@ -1357,6 +1466,12 @@
 				return object.getBorderRadius();
 			case 'isChecked':
 				return object.isChecked();
+			case 'getRadioButtonName':
+				return object.getRadioButtonName();
+			case 'getRadioButtonValue':
+				return object.getRadioButtonValue();
+			case 'getCheckboxValue':
+				return object.getCheckboxValue();
 			default:
 				return undefined;
 		}
@@ -1381,6 +1496,7 @@
 		new toolBarElement('<input_text>','#ffffff',20);
 		new toolBarElement('<input_button>','#e6e6e6',20);
 		new toolBarElement('<input_radio>','#000000',20);
+		new toolBarElement('<input_checkbox>','#000000',20);
 		
 	}
 	
@@ -1431,7 +1547,9 @@
 	
 	function onChangeText(){
         var newText = window.event.srcElement.value;
-        selectedItemObj.setInnerText(newText);
+		if (selectedItemObj.type == '<input_radio>') selectedItemObj.setRadioButtonValue(newText);
+		else if (selectedItemObj.type == '<input_checkbox>') selectedItemObj.setCheckboxValue(newText);
+        else selectedItemObj.setInnerText(newText);
     }
 	
 	function onChangeBorderWidth(){
@@ -1548,6 +1666,11 @@
 	function onChangeChecked(){
 		var checked = window.event.srcElement.value;
 		selectedItemObj.setChecked(checked);
+	}
+	
+	function onChangeRadioButtonName(){
+		var newName = window.event.srcElement.value;
+		selectedItemObj.setRadioButtonName(newName);
 	}
 	
 /*
@@ -1793,12 +1916,12 @@
 */
 	
 	function coordToBodySize(coord){
-		var koef = stretch ? 1 : bodySize / stageWidth;
+		var koef = stretch ? 100 / stageWidth : bodySize / stageWidth;
 		return Math.round(coord * koef);//parseInt(coord * koef);//Math.round(coord * koef);
 	}
 	
 	function coordToRealValue(coord){
-		var koef = stretch ? 1 : stageWidth / bodySize;
+		var koef = stretch ? stageWidth / 100 : stageWidth / bodySize;
 		return Math.round(coord * koef);//parseInt(coord * koef);//Math.round(coord * koef);
 	}
 	
@@ -1939,8 +2062,8 @@
 					break;
 				*/
 				case 'Text':
-					if(object.type == '<input_text>') obj.key = 'value';
-					else obj.key = 'text';
+					//if(object.type == '<input_text>') obj.key = 'value';
+					obj.key = 'text';
 					break;
 				case 'BGColor':
 					obj.key = 'background-color';
@@ -2059,6 +2182,8 @@
 								break;
 							case 'value':
 								if (name == '<input_text>') selectedItemObj.setInnerText(attr[a].value);
+								else if (name == '<input_radio>') selectedItemObj.setRadioButtonValue(attr[a].value);
+								else if (name == '<input_checkbox>') selectedItemObj.setCheckboxValue(attr[a].value);
 								else console.log('parse json attr "'+attr[a].key + '" from ' + name);
 								break;
 							case 'background-color':
