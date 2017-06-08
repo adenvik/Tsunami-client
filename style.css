@@ -17,7 +17,7 @@
 
 #leftbar{
 	float:left;
-	width:15%;
+	width:10%;
 	height:100%;
 	background-color:#adccff;
 }
@@ -31,7 +31,7 @@
 #center{
 	float:left;
 	height:100%;
-	width:70%;
+	width:75%;
 	overflow:auto;
 }
 
@@ -44,6 +44,7 @@
 	height:60%;
 	width:100%;
 	background-color:#3399ff;
+	overflow:auto;
 }
 .propertiesItem{
 	width:150px;

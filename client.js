@@ -143,6 +143,7 @@
 	});
 	
 	stage.on('dragmove', function(evt){
+		trigger = false;
 		if(selectedItemObj != undefined) selectedItemObj.setAlign('none');
 	});
 	
@@ -215,12 +216,14 @@
 			color - начальный цвет элемента на рабочем слое
 			height - высота элемента
 	*/
-	function toolBarElement(type,color,height){
+	function toolBarElement(type,view,height, width, v){
 		this.layer = toolbarLayer;
 		this.type = type;
-		this.color = color;
+		this.view = view;
 		this.align = 'none';
-		if (height == undefined || height == null) height = 70;
+		height = height || 70;
+		width = width || parseInt(toolbarWidth - 2 * (toolbarWidth / 6));
+		x = parseInt((toolbarWidth / 2) - (width / 2)) || parseInt(toolbarWidth / 6);
 		//Даем объекту уникальное имя	
 		if (elemsCount[this.type] == undefined) {
 			elemsCount[this.type] = 0;
@@ -237,7 +240,7 @@
 		}
 		//Создаем группу
 		this.group = new Konva.Group({
-			x: parseInt(toolbarWidth / 6),
+			x: x,
 			y: posY,
 			name: this.name
 		});
@@ -289,18 +292,32 @@
 		this.rect = new Konva.Rect({
 			x: 0,
 			y: 0,
-			width: parseInt(toolbarWidth - 2 * (toolbarWidth / 6)), 
+			width: width, 
 			height: height,
-			fill: this.color,
 			name: this.name+'rect',
 			strokeWidth: 0,
 			opacity: 1
 		});
 		this.group.add(this.rect);
+		this.viewIm = new Konva.Image({
+			x: 0,
+			y: 0,
+			image:undefined,
+			name:this.name+'View',
+			width:width,
+			height:height
+		});
+		var tIm = new Image();
+		tIm.src = this.view;
+		tIm.onload = function(){
+			toolbar.draw();
+		}
+		this.viewIm.image(tIm);
+		this.group.add(this.viewIm);
 		this.borderRect = new Konva.Rect({
 			x: 0,
 			y: 0,
-			width: parseInt(toolbarWidth - 2 * (toolbarWidth / 6)), 
+			width: width, 
 			height: height,
 			name: this.name+'BorderRect',
 			strokeWidth:0.5,
@@ -316,6 +333,7 @@
 			fontFamily: 'Calibri',
 			fill: '#000000'
 		});
+		if (width != parseInt(toolbarWidth - 2 * (toolbarWidth / 6))) this.groupTypeText.x(- this.groupTypeText.width() / 2 + width / 2); 
 		this.group.add(this.groupTypeText);	
 		toolbarLayer.add(this.group);
 		toolbarLayer.draw();
@@ -327,6 +345,7 @@
 		}
 		this.setWidth = function(value){
 			this.rect.width(value);
+			this.viewIm.width(value);
 			this.borderRect.width(value);
 			this.layer.draw();
 		}
@@ -335,6 +354,7 @@
 		}
 		this.setHeight = function(value){
 			this.rect.height(value);
+			this.viewIm.width(value);
 			this.borderRect.height(value);
 			this.layer.draw();
 		}
@@ -382,6 +402,7 @@
 			if(value) this.borderRect.stroke('#000000');
 			else this.borderRect.stroke(undefined);
 		}
+		this.borderVisible(false);
 		this.setName = function(value){
 			if(value == undefined || value == "") return;
 			this.group.get('.' + this.name + 'rect')[0].name(value+'rect');
@@ -432,7 +453,6 @@
 		this.getBorderColor = function(){
 			return this.rect.stroke();
 		}
-		
 	}
 	
 	/*
@@ -581,7 +601,7 @@
 	function cloneToolbarElement(group){
 		var object = findElem(group);
 		//Создаем новый элемент с такими же параметрами
-		var clone = new toolBarElement(object.type,object.color,object.getHeight());
+		var clone = new toolBarElement(object.type, object.view,object.getHeight(), object.getWidth());
 		//Уменьшаем счетчик, т.к. данный элемент уже не является шаблоном
 		toolbarElementsCount--;
 		//Устанавливаем ему позицию по умолчанию, где лежит исходный объект
@@ -641,7 +661,7 @@
         });
         //Если группа лежит на слое, то переносим детей на слой
         if (selectedItem.getParent().getParent() == stage){
-            console.log("Родитель - layer");
+            //console.log("Родитель - layer");
             groups.forEach(function(group) {
                 group.setX(group.getAbsolutePosition().x);
                 group.setY(group.getAbsolutePosition().y);
@@ -654,7 +674,7 @@
                 group.setY(group.getAbsolutePosition().y - parentObj.getAbsolutePosition().y);
                 group.moveTo(parentObj);
             });
-            console.log("Родитель - "+selectedItem.getParent().name());
+            //console.log("Родитель - "+selectedItem.getParent().name());
         }
 		//Находим позицию элемента в списке
 		for(var i = toolbarElementsCount; i < elems.length; i++){
@@ -684,17 +704,27 @@
 	*/
 	function moveToMainLayer(object){
 		//Убираем надпись
+		var count = 2;
 		var children = object.getChildren();
 		for(var i = 0; i < children.length; i++){
+			if(count == 0) break;
 			if (children[i].name() == object.name()+'type'){
 				children[i].destroy();
-				break;
+				count--;
+				continue;
+			}
+			if (children[i].name() == object.name()+'View'){
+				children[i].destroy();
+				count--;
+				continue;
 			}
 		}
 		//Находим объект и переносим его на рабочий слой
 		object = findElem(object);
 		object.setLayer(dragLayer);
 		delete object.groupTypeText;
+		delete object.viewIm;
+		delete object.view;
 		//Добавляем вспомогательное свойство
 		object.parentObj = undefined;
 		//Добавляем объекту rect, который будет отображать выделение объекта
@@ -902,6 +932,7 @@
 		object.addProperty('BorderColor','getBorderColor',createHtmlObject('input','color','onChangeBorderColor'));
 		object.addProperty('BorderRadius','getBorderRadius',createHtmlObject('input','number','onChangeBorderRadius'));
 		object.addProperty('BGColor','getBGColor',createHtmlObject('input','color','onChangeBGColor'));
+		object.addProperty('Opacity','getOpacity',createHtmlObject('input','text','onChangeOpacity'));
 		//Добавляем специфические элементы в зависимости от типа
 		switch(object.type){
 			case '<div>':
@@ -1168,7 +1199,7 @@
 	function createHtmlObject(name, type, func, values){
 		var htmlObj = document.createElement(name);
 		if (type != undefined) htmlObj.setAttribute('type',type);
-		if (func != undefined) htmlObj.setAttribute('onchange',func+'()');
+		if (func != undefined) htmlObj.setAttribute('onchange',func+'(event)');
 		if (values != undefined){
 			switch(name){
 				case 'select':
@@ -1286,6 +1317,7 @@
 		}
 		object.updateSize = function(_super){
 			return function(){
+				_super.call(this);
 				this.imageObj.width(this.getWidth());
 				this.imageObj.height(this.getHeight());
 				return _super.apply(this,arguments);
@@ -1441,7 +1473,7 @@
 			case 'getWidth':
 				return coordToBodySize(object.getWidth());//object.getWidth();
 			case 'getHeight':
-				return coordToBodySize(object.getHeight());//object.getHeight();
+				return object.getHeight();//object.getHeight();
 			case 'getBGColor':
 				return object.getBGColor();
 			case 'getImage':
@@ -1472,6 +1504,8 @@
 				return object.getRadioButtonValue();
 			case 'getCheckboxValue':
 				return object.getCheckboxValue();
+			case 'getOpacity':
+				return object.getOpacity();
 			default:
 				return undefined;
 		}
@@ -1489,14 +1523,13 @@
 		//Создаем сетку
 		if(gridShow) createCanvasCells();
 		//И шаблоны элементов
-		new toolBarElement('<div>',"#d6d6d6");
-		new toolBarElement('<p>',"red", 40);
-		new toolBarElement('<img>','#000000');
-		
-		new toolBarElement('<input_text>','#ffffff',20);
-		new toolBarElement('<input_button>','#e6e6e6',20);
-		new toolBarElement('<input_radio>','#000000',20);
-		new toolBarElement('<input_checkbox>','#000000',20);
+		new toolBarElement('<div>','./images/div.png');
+		new toolBarElement('<p>','./images/p.png', 50);
+		new toolBarElement('<img>','http://oboifullhd.ru/_ph/33/883876685.jpg');
+		new toolBarElement('<input_text>','./images/input_text.png',20);
+		new toolBarElement('<input_button>','./images/button.png',20, 80);
+		new toolBarElement('<input_radio>','./images/radio.png',20, 20);
+		new toolBarElement('<input_checkbox>','./images/check.png',20, 20);
 		
 	}
 	
@@ -1514,69 +1547,90 @@
             else $(this).show();
         });
     }
-	function onChangeTextFont(){
-		var newFont = window.event.srcElement.value;
+	function onChangeTextFont(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newFont = current.value;
 		selectedItemObj.setFontInnerText(newFont);
 		var fontInput = $('input[class="fontProperties"');
 		var oldValue = fontInput[0].value.split(',');
-		fontInput[0].value = newFont+', '+oldValue[1];
+		fontInput[0].value = oldValue[1] + ', ' + newFont;
 	}
 	
-	function onChangeSizeText(){
-		var newSize = window.event.srcElement.value;
+	function onChangeSizeText(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newSize = current.value;
 		selectedItemObj.setSizeInnerText(newSize);
 		var fontInput = $('input[class="fontProperties"');
 		var oldValue = fontInput[0].value.split(',');
-		fontInput[0].value = oldValue[0]+', ' + newSize;
+		fontInput[0].value =  newSize + ', ' + oldValue[1];
 	}
 	
-	function onChangeColorText(){
-		var newColor = window.event.srcElement.value;
+	function onChangeColorText(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newColor = current.value;
 		selectedItemObj.setColorInnerText(newColor);
 	}
 	
-	function onChangeStyleText(){
-		var newStyle = window.event.srcElement.value;
+	function onChangeStyleText(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newStyle = current.value;
 		selectedItemObj.setStyleInnerText(newStyle);
 	}
 	
-	function onChangeAlignText(){
-		var newAlign = window.event.srcElement.value;
+	function onChangeAlignText(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newAlign = current.value;
 		selectedItemObj.setAlignInnerText(newAlign);
 	}
 	
-	function onChangeText(){
-        var newText = window.event.srcElement.value;
+	function onChangeText(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+        var newText = current.value;
 		if (selectedItemObj.type == '<input_radio>') selectedItemObj.setRadioButtonValue(newText);
 		else if (selectedItemObj.type == '<input_checkbox>') selectedItemObj.setCheckboxValue(newText);
         else selectedItemObj.setInnerText(newText);
     }
 	
-	function onChangeBorderWidth(){
-		var newWidth = parseInt(window.event.srcElement.value);
-		if (newWidth < 0 && isNaN(newWidth)){
+	function onChangeBorderWidth(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newWidth = parseInt(current.value);
+		if (newWidth < 2 * anchorSize && isNaN(newWidth)){
 			window.event.srcElement.value = selectedItemObj.getBorderWidth();
 			return;
 		}
 		selectedItemObj.setBorderWidth(newWidth);
+		selectedItemObj.setBorderColor($('input[onchange="onChangeBorderColor(event)"')[0].value);
 	}
 	
-	function onChangeBorderColor(){
-		var newColor = window.event.srcElement.value;
+	function onChangeBorderColor(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newColor = current.value;
 		selectedItemObj.setBorderColor(newColor);
 	}
 	
-	function onChangeBorderRadius(){
-		var newRadius = parseInt(window.event.srcElement.value);
-		if (newRadius < 0 && isNaN(newRadius)){
+	function onChangeBorderRadius(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newRadius = parseInt(current.value);
+		if (newRadius < 2 * anchorSize && isNaN(newRadius)){
 			window.event.srcElement.value = selectedItemObj.getBorderRadius();
 			return;
 		}
 		selectedItemObj.setBorderRadius(newRadius);
 	}
 	
-	function onChangeX(){
-		var newX = parseInt(window.event.srcElement.value);
+	function onChangeX(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newX = parseInt(current.value);
 		if(newX < 0 || isNaN(newX)){
 			window.event.srcElement.value = selectedItemObj.getX();
 			return;
@@ -1584,8 +1638,10 @@
 		selectedItemObj.setX(coordToRealValue(newX));
 	}
 	
-	function onChangeY(){
-		var newY = parseInt(window.event.srcElement.value);
+	function onChangeY(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newY = parseInt(current.value);
 		if(newY < 0 || isNaN(newY)){
 			window.event.srcElement.value = selectedItemObj.getY();
 			return;
@@ -1593,8 +1649,11 @@
 		selectedItemObj.setY(coordToRealValue(newY));
 	}
 	
-	function onChangeWidth(){
-		var newWidth = parseInt(window.event.srcElement.value);
+	function onChangeWidth(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newWidth = parseInt(current.value);
+		//var newWidth = parseInt(window.event.srcElement.value);
 		if(newWidth < 3 * anchorSize || isNaN(newWidth)){
 			window.event.srcElement.value = selectedItemObj.getWidth();
 			return;
@@ -1602,24 +1661,31 @@
 		selectedItemObj.setWidth(coordToRealValue(newWidth));
 	}
 	
-	function onChangeHeight(){
-		var newHeight = parseInt(window.event.srcElement.value);
+	function onChangeHeight(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newHeight = parseInt(current.value);
+		//var newHeight = parseInt(window.event.srcElement.value);
 		if(newHeight < 3 * anchorSize || isNaN(newHeight)){
 			window.event.srcElement.value = selectedItemObj.getHeight();
 			return;
 		}
-		selectedItemObj.setHeight(coordToRealValue(newHeight));
+		selectedItemObj.setHeight(newHeight);
 	}
 	
-	function onChangeBGColor(){
-		var newColor = window.event.srcElement.value;
+	function onChangeBGColor(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newColor = current.value;
 		selectedItemObj.setBGColor(newColor);
 		$("input[name='HexBGColor']")[0].value = newColor;
 		$("input[name='CBBGColor']")[0].checked = false;
 	}
 	
-	function onChangeHexBGColor(){
-		var newColor = window.event.srcElement.value;
+	function onChangeHexBGColor(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newColor = current.value;
 		if(newColor != undefined){
 			var inpColor = $("input[name='INPBGColor']")[0];
 			//Вставляем значение в input, для получения адекватного цвета
@@ -1647,30 +1713,47 @@
 		}
 	}
 	
-	function onChangeImage(){
-		var newImageSrc = window.event.srcElement.value;
+	function onChangeImage(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newImageSrc = current.value;
 		if (newImageSrc == '') newImageSrc = undefined;
 		selectedItemObj.setImage(newImageSrc);
 	}
 	
-	function isUseBGColor(){
-		if (window.event.srcElement.checked) selectedItemObj.setBGColor(undefined);
+	function isUseBGColor(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		if (current.checked) selectedItemObj.setBGColor(undefined);
 		else selectedItemObj.setBGColor($("input[name='INPBGColor']")[0].value);
 	}
 	
-	function onChangeAlign(){
-		var newAlign = window.event.srcElement.value;
+	function onChangeAlign(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newAlign = current.value;
 		selectedItemObj.setAlign(newAlign);
 	}
 	
-	function onChangeChecked(){
-		var checked = window.event.srcElement.value;
+	function onChangeChecked(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var checked = current.value;
 		selectedItemObj.setChecked(checked);
 	}
 	
-	function onChangeRadioButtonName(){
-		var newName = window.event.srcElement.value;
+	function onChangeRadioButtonName(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newName = current.value;
 		selectedItemObj.setRadioButtonName(newName);
+	}
+	
+	function onChangeOpacity(e){
+		var evt = e || window.event; 
+		var current = evt.target || evt.srcElement;
+		var newOpacity = current.value;
+		selectedItemObj.setOpacity(newOpacity);
 	}
 	
 /*
@@ -1721,8 +1804,8 @@
 		deselectCurrentItem();
 		//Создаем новую копию
 		var obj = objectClone(copyObject);
-		//Выделяем для работы
-		obj.select(true);
+		selectedItem = obj.group;
+		selectedItemObj = obj;
 		//Кладем группу в координатах курсора
 		obj.setX(currentPos.x);
 		obj.setY(currentPos.y);
@@ -1734,54 +1817,96 @@
 	/*
 		Функция клонирования рабочего объекта
 	*/
-	function objectClone(obj){
+	function objectClone(obj, pObj){
 		if(obj == undefined) return;
-		
-		var clone = Object.assign({},obj);
-		elemsCount[clone.type]++;
-		var name = clone.type + elemsCount[clone.type];
-		clone.group = groupClone(obj.group, clone);
-		//Копируем все объекты Konva из группы чтобы сбросить ссылки с исходного объекта
-		for(p in obj){
-			try{
-				if(obj[p].getType()!='Layer' && obj[p].getType()!='Group'){
-					var t = clone.group.get('.' + obj[p].name())[0];
-					clone[p] = t;
-				}
-			}catch(err){}
+		var clone;
+		for(var i = 0; i < toolbarElementsCount; i++){
+			if (obj.type == elems[i].type){
+				clone = cloneToolbarElement(elems[i].group);
+				moveToMainLayer(clone.group);
+				break;
+			}
 		}
-		//Даем уникальное имя и помещаем в массив объектов
-		clone.setName(name);
-		elems.push(clone);
-		
+		obj.properties.forEach(function(property){
+			setProperty(obj,clone,property);
+		});
+		clone.updateSize();
+
+		if (pObj) clone.parentObj = pObj;
+		obj.group.getChildren().forEach(function(item){
+			if(item.getType() == 'Group'){
+				clone.group.add(objectClone(findElem(item), clone).group);
+			}
+		});
+		deselectCurrentItem();
 		return clone;
 	}
 	
 	/*
-		Функция клонирования группы рабочего объекта (рекурсивная с вышестоящей функцией)
-			group - группа, которая клонируется
-			obj - объект, содержащий данную группу (для рекурсивного алгоритма - указание родителя)
+		Функция установки свойств
+			source - исходный объект
+			dest - "скопированный" объект
+			property - текущее свойство
 	*/
-	function groupClone(group, obj){
-		if (group == undefined) return;
-		
-		var clone = new Konva.Group({
-			x: group.x(),
-			y: group.y(),
-			name: group.name()
-		});
-		clone.dragBoundFunc(group.dragBoundFunc());
-		group.getChildren().forEach(function(item){
-			if(item.getType() != 'Group'){
-				clone.add(item.clone());
-			}else{
-				var insertedElem = findElem(item);
-				var newElem = objectClone(insertedElem);
-				newElem.parentObj = obj;
-				clone.add(newElem.group);
+	function setProperty(source, dest, property){
+		if (property.childProperties.length > 0){
+			for(var i = 0; i < property.childProperties.length; i++){
+				setProperty(source,dest,property.childProperties[i]);
 			}
-		});
-		return clone;
+		}else
+		{
+			switch(property.key){
+				case 'Left':
+					dest.setX(source.getX());
+					break;
+				case 'Top':
+					dest.setY(source.getY());
+					break;
+				case 'Width':	
+					dest.setWidth(source.getWidth());
+					break;
+				case 'Height':
+					dest.setHeight(source.getHeight());
+					break;
+				case 'Checked':
+					dest.setChecked(source.getCheked());
+					break;
+				case 'SRC':
+				case 'BGImage':
+					dest.setImage(source.getImage());
+					break;
+				case 'Text':
+					dest.setInnerText(source.getInnerText());
+					break;
+				case 'BGColor':
+					dest.setBGColor(source.getBGColor());
+					break;
+				case 'TextFont':
+					dest.setFontInnerText(source.getFontInnerText());
+					break;
+				case 'TextSize':
+					dest.setSizeInnerText(source.getSizeInnerText());
+					break;
+				case 'TextColor':
+					dest.setColorInnerText(source.getColorInnerText());
+					break;
+				case 'TextStyle':
+					dest.setStyleInnerText(source.getStyleInnerText());
+					break;
+				case 'TextAlign':
+					dest.setAlignInnerText(source.getAlignInnerText());
+					break;
+				case 'BorderWidth':
+					dest.setBorderWidth(source.getBorderWidth());
+					break;
+				case 'BorderColor':
+					dest.setBorderColor(source.getBorderColor());
+					break;
+				case 'BorderRadius':
+					dest.setBorderRadius(source.getBorderRadius());
+				default:
+			}
+		}
 	}
 /*
 	Область функций обработки окна
@@ -1827,7 +1952,7 @@
 	
 	$('#borderShowCB').on('change', function(e){;
 		borderVisible = e.currentTarget.checked;
-		for(var i = 0; i < elems.length; i++){
+		for(var i = toolbarElementsCount; i < elems.length; i++){
 			elems[i].borderVisible(borderVisible);
 		}
 		stage.draw();
@@ -1863,6 +1988,7 @@
 		var table = document.createElement('table');
 		table.setAttribute('align','center');
 		var tr = document.createElement('tr');
+
 		for(var i = 0; i < imgs.length; i++){
 			if(count > countInRow){
 				table.appendChild(tr);
@@ -1884,9 +2010,7 @@
 		var img = document.createElement('img');
 		img.setAttribute('src',imgInfo);
 		img.setAttribute('id','img');
-		
 		if (!existImg(imgInfo)) return undefined;
-		
 		img.setAttribute('width',150);
 		img.setAttribute('height',130);
 		img.setAttribute('style','margin:5px');
@@ -1896,8 +2020,9 @@
 	
 	function existImg(img){
 		var i = new Image();
+		i.onload = function(){};
 		i.src = img;
-		return i.height != 0;
+		return true;//i.height > 0;
 	}
 	
 	function c(imgSrc){
@@ -1930,7 +2055,9 @@
 	*/
 	window.onresize = function(event) {
 		var oldStageWidth = stageWidth,
-			oldStageHeight = stageHeight;
+			oldStageHeight = stageHeight,
+			oldToolbarWidht = toolbarWidth,
+			oldToolbarHeight = toolbarHeight;
 		//Получаем новые размеры и применяем их
 		stageWidth =  document.getElementById('center').offsetWidth;
 		stageHeight = document.getElementById('center').offsetHeight;
@@ -1945,8 +2072,8 @@
 		createCanvasCells();
 		//Меняем размер у элементов toolbar
 		for(var i = 0; i < toolbarElementsCount; i++){
-			elems[i].setX(parseInt(toolbarWidth / 6));
-			elems[i].setWidth(parseInt(toolbarWidth - 2 * (toolbarWidth / 6)));
+			elems[i].setX(elems[i].getX() * toolbarWidth / oldToolbarWidht);
+			elems[i].setWidth(elems[i].getWidth() * toolbarWidth / oldToolbarWidht);
 		}
 		//Если есть элементы в рабочей области
 		if(elems.length > toolbarElementsCount){
@@ -1960,6 +2087,10 @@
 		fillImageDiv();
 	};
 	
+	window.onbeforeunload = function(e){
+		return "Вы уверены что хотите уйти с данной страницы? Внесенные изменения не будут сохранены.";
+	}
+
 	/*
 		Функция увеличения высоты документа
 	*/
@@ -2100,7 +2231,14 @@
 			obj.value = getCurrentValue(object,property.funcName);
 			var defaultValue = [undefined,'left','none','normal'];
 			if (defaultValue.includes(obj.value)) return [];
-			else return obj;
+			else{
+				var p = ['left','top','width','height'];
+				if (p.includes(obj.key)){
+					if(stretch) obj.value += "%";
+					else obj.value += "px";
+				}
+				return obj;
+			}
 		}
 	}
 	
@@ -2116,7 +2254,8 @@
 			$($('#stretchingCB')[0]).checked = true;
 		}else {
 			$($('#stretchingCB')[0]).checked = false;
-			bodySize = parseInt(json[0].bodySize);
+			if (json[0].bodySize != undefined) bodySize = parseInt(json[0].bodySize);
+			else bodySize = 1000;
 		}
 		//Внешний вид
 		if (stretch) $($('tr[id="bodyWidth"]')[0]).hide();
@@ -2240,13 +2379,17 @@
 		Функция получения ссылок на картинки от сервера и заполнение ими массива
 	*/
 	function getImage(){
-		imgs.push('https://pp.userapi.com/c636728/v636728764/55555/_Roua36t_6U.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50f84/lCaA8wCa7pk.jpg');
-		imgs.push('https://pp.userapi.com/c637830/v637830742/4251b/JVCQo5CSrzk.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50f97/MmPSo-CYGX8.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50f9e/-zZEnfPYRWI.jpg');
-		imgs.push('https://pp.userapi.com/c637216/v637216441/50fa5/iavnFC2XazM.jpg');
-		imgs.push('https://pp.userapi.com/c638523/v638523934/3fa7b/HmqVqFOZUuY.jpg');
+		imgs.push('http://download.seaicons.com/icons/webalys/kameleon.pics/512/Man-14-icon.png');
+		imgs.push('http://oboifullhd.ru/_ph/33/883876685.jpg');
+		imgs.push('https://i.imgur.com/GayVcAg.jpg');
+		imgs.push('http://74211.com/wallpaper/picture_big/Sea-Wave-Landscape-Blue-and-High-Sea-Wave-Clean-and-Crystal-Clear.jpg');
+		imgs.push('http://semeino-konsultirane.bg/public/images/zamen.jpg');
+		imgs.push('https://cdn.pixabay.com/photo/2016/05/20/17/34/mint-1405613_960_720.jpg');
+		imgs.push('https://cdn.suwalls.com/wallpapers/flowers/water-lily-5411-1920x1080.jpg');
+		imgs.push('http://scerbos.com/i/2017/03/forest-full-moon-wallpapers-high-resolution.jpg');
+		imgs.push('http://www.uhdwallpaper5k.com/wp-content/uploads/2016/08/beach-965522.jpg');
+		imgs.push('http://img15.nnm.me/f/a/7/f/4/39d2948a94e66c975b9f84e880e.jpg');
+		imgs.push('http://awesomwallpaper.com/img2/5CDD618026276E33/yellow-butterfly-flower.jpg');
 	}
 	/*
 		Функция отправки запроса на генерацию 
@@ -2256,7 +2399,7 @@
         //console.log(data);
         $.ajax({
             type: "POST",
-            url: "/Main/generateHTML",
+            url: "/Work/generateHTML",
             data: {JSONData: data},
             success: function(response, status, xhr) {
                 // check for a filename
@@ -2313,7 +2456,7 @@
  
                 $.ajax({
                     type: "POST",
-                    url: '/Main/generateProject',
+                    url: '/Work/generateProject',
                     contentType: false,
                     processData: false,
                     data: data,
